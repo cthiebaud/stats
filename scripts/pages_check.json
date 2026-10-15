@@ -1,0 +1,332 @@
+[
+  {
+    "group": "parimagine",
+    "status": "include",
+    "owner": "parimagine",
+    "repo": "parimagine.github.io",
+    "html_url": "http://dev.parimagine.fr/",
+    "cname": "dev.parimagine.fr",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "earthlydelights",
+    "status": "include",
+    "owner": "earthlydelights",
+    "repo": "earthlydelights.github.io",
+    "html_url": "http://earthlydelights.garden/",
+    "cname": "earthlydelights.garden",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "covid",
+    "status": "include",
+    "owner": "usa-covid-aequologica-net",
+    "repo": "usa.covid.aequologica.net",
+    "html_url": "https://usa.covid.aequologica.net/",
+    "cname": "usa.covid.aequologica.net",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "covid",
+    "status": "include",
+    "owner": "covid-aequologica-net",
+    "repo": "covid-aequologica-net.github.io",
+    "html_url": "https://covid.aequologica.net/",
+    "cname": "covid.aequologica.net",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "sangiosleague",
+    "status": "include",
+    "owner": "sangiosleague",
+    "repo": "sangiosleague.github.io",
+    "html_url": "https://sangiosleague.it/",
+    "cname": "sangiosleague.it",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "sangiosleague",
+    "status": "include",
+    "owner": "sangiosleague",
+    "repo": "sangiosleague.api",
+    "html_url": "https://sangiosleague.it/sangiosleague.api/",
+    "cname": null,
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "sangiovannilipioni",
+    "status": "include",
+    "owner": "sangiovannilipioni",
+    "repo": "sangiovannilipioni.github.io",
+    "html_url": "https://sangiovannilipioni.net/",
+    "cname": "sangiovannilipioni.net",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "sangiovannilipioni",
+    "status": "include",
+    "owner": "sangiovannilipioni",
+    "repo": "sangiovannilipioni.api",
+    "html_url": "https://api.sangiovannilipioni.net/",
+    "cname": "api.sangiovannilipioni.net",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "ciaccona",
+    "status": "include",
+    "owner": "cthiebaud",
+    "repo": "ciaccona",
+    "html_url": "https://cthiebaud.com/ciaccona/",
+    "cname": null,
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "ciaccona",
+    "status": "include",
+    "owner": "musicollator",
+    "repo": "ciaccona",
+    "html_url": "https://ciaccona.cthiebaud.com/",
+    "cname": "ciaccona.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "ciaccona",
+    "status": "include",
+    "owner": "musicollator",
+    "repo": "ciaccona-stationary",
+    "html_url": "https://musicollator.github.io/ciaccona-stationary/",
+    "cname": null,
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "bookshelves",
+    "status": "include",
+    "owner": "cthiebaud",
+    "repo": "bookshelves",
+    "html_url": "http://bookshelves.cthiebaud.com/",
+    "cname": "bookshelves.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "aletheia",
+    "status": "include",
+    "owner": "cthiebaud",
+    "repo": "truth",
+    "html_url": "http://aletheia.cthiebaud.com/",
+    "cname": "aletheia.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "bwv",
+    "status": "include",
+    "owner": "cthiebaud",
+    "repo": "bwv1006",
+    "html_url": "http://cthiebaud.com/bwv1006/",
+    "cname": null,
+    "pages_status": "building",
+    "build_type": "legacy"
+  },
+  {
+    "group": "bwv",
+    "status": "include",
+    "owner": "cthiebaud",
+    "repo": "bwv",
+    "html_url": "http://cthiebaud.com/bwv/",
+    "cname": null,
+    "pages_status": "building",
+    "build_type": "legacy"
+  },
+  {
+    "group": "bwv",
+    "status": "include",
+    "owner": "musicollator",
+    "repo": "bwv",
+    "html_url": "https://bwv.cthiebaud.com/",
+    "cname": "bwv.cthiebaud.com",
+    "pages_status": null,
+    "build_type": "workflow"
+  },
+  {
+    "group": "bwv",
+    "status": "include",
+    "owner": "musicollator",
+    "repo": "bwv-siegel",
+    "html_url": "https://musicollator.github.io/bwv-siegel/",
+    "cname": null,
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "mundial",
+    "status": "include",
+    "owner": "born-in-plays-for",
+    "repo": "mundial",
+    "html_url": "https://mundial.cthiebaud.com/",
+    "cname": "mundial.cthiebaud.com",
+    "pages_status": "errored",
+    "build_type": "workflow"
+  },
+  {
+    "group": "gear",
+    "status": "include",
+    "owner": "cthiebaud",
+    "repo": "gear",
+    "html_url": "http://gear.cthiebaud.com/",
+    "cname": "gear.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "iroif",
+    "status": "exclude",
+    "owner": "cthiebaud",
+    "repo": "iroif",
+    "html_url": "http://cthiebaud.com/iroif/",
+    "cname": null,
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "aequologica",
+    "status": "exclude",
+    "owner": "aequologica",
+    "repo": "aequologica.github.io",
+    "html_url": "http://aequologica.cthiebaud.com/",
+    "cname": "aequologica.cthiebaud.com",
+    "pages_status": "errored",
+    "build_type": "legacy"
+  },
+  {
+    "group": "cthiebaud.github.io",
+    "status": "exclude",
+    "owner": "cthiebaud",
+    "repo": "cthiebaud.github.io",
+    "html_url": "https://cthiebaud.com/",
+    "cname": "cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "openricard",
+    "status": "exclude",
+    "owner": "cthiebaud",
+    "repo": "openricard.net",
+    "html_url": "http://openricard.cthiebaud.com/",
+    "cname": "openricard.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "klam",
+    "status": "exclude",
+    "owner": "cthiebaud",
+    "repo": "klam",
+    "html_url": "https://klam.cthiebaud.com/",
+    "cname": "klam.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "emugnier",
+    "status": "exclude",
+    "owner": "cthiebaud",
+    "repo": "emugnier",
+    "html_url": "http://emugnier.cthiebaud.com/",
+    "cname": "emugnier.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "music",
+    "status": "include",
+    "owner": "cthiebaud",
+    "repo": "music",
+    "html_url": "http://music.cthiebaud.com/",
+    "cname": "music.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "openmozart",
+    "status": "exclude",
+    "owner": "cthiebaud",
+    "repo": "openmozart.net",
+    "html_url": "https://openmozart.cthiebaud.com/",
+    "cname": "openmozart.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "athenaeum",
+    "status": "exclude",
+    "owner": "athenaeum-brew",
+    "repo": "making-of",
+    "html_url": "http://athenaeum.cthiebaud.com/",
+    "cname": "athenaeum.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "athenaeum",
+    "status": "exclude",
+    "owner": "athenaeum-brew",
+    "repo": "maven-repo",
+    "html_url": "https://athenaeum-brew.github.io/maven-repo/",
+    "cname": null,
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "burbain",
+    "status": "exclude",
+    "owner": "cthiebaud",
+    "repo": "burbain",
+    "html_url": "http://burbain.cthiebaud.com/",
+    "cname": "burbain.cthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "carolethomas",
+    "status": "exclude",
+    "owner": "carolethomas",
+    "repo": "carolethomas.github.io",
+    "html_url": "http://carolethomas.com/",
+    "cname": "carolethomas.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "mugnierandthiebaud",
+    "status": "exclude",
+    "owner": "mugnierandthiebaud",
+    "repo": "mugnierandthiebaud.github.io",
+    "html_url": "http://mugnierandthiebaud.com/",
+    "cname": "mugnierandthiebaud.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  },
+  {
+    "group": "eric-mugnier",
+    "status": "exclude",
+    "owner": "eric-mugnier",
+    "repo": "eric-mugnier.github.io",
+    "html_url": "https://ericmugnier.com/",
+    "cname": "ericmugnier.com",
+    "pages_status": "built",
+    "build_type": "legacy"
+  }
+]

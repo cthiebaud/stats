@@ -1,0 +1,98 @@
+[
+  {
+    "name": "parimagine",
+    "start": "2013-04",
+    "end": "2018-04",
+    "days": 210.7,
+    "commits": 175,
+    "loc": 3241
+  },
+  {
+    "name": "earthlydelights",
+    "start": "2016-01",
+    "end": "2019-04",
+    "days": 1039.3,
+    "commits": 235,
+    "loc": 3115
+  },
+  {
+    "name": "covid",
+    "start": "2020-06",
+    "end": "2021-09",
+    "days": 144.3,
+    "commits": 221,
+    "loc": 11994
+  },
+  {
+    "name": "sangiosleague",
+    "start": "2021-07",
+    "end": "2021-09",
+    "days": 63.4,
+    "commits": 242,
+    "loc": 1352
+  },
+  {
+    "name": "sangiovannilipioni",
+    "start": "2021-08",
+    "end": "2022-04",
+    "days": 136.1,
+    "commits": 135,
+    "loc": 4810
+  },
+  {
+    "name": "ciaccona",
+    "start": "2021-11",
+    "end": "2025-02",
+    "days": 244.7,
+    "commits": 1280,
+    "loc": 20538
+  },
+  {
+    "name": "bookshelves",
+    "start": "2023-10",
+    "end": "2024-02",
+    "days": 123.8,
+    "commits": 495,
+    "loc": 4307
+  },
+  {
+    "name": "aletheia",
+    "start": "2024-01",
+    "end": "2024-04",
+    "days": 105.0,
+    "commits": 646,
+    "loc": 5825
+  },
+  {
+    "name": "bwv",
+    "start": "2022-04",
+    "end": "2025-07",
+    "days": 88.8,
+    "commits": 685,
+    "loc": 13026
+  },
+  {
+    "name": "mundial",
+    "start": "2026-06",
+    "end": "2026-07",
+    "days": 52.3,
+    "commits": 1358,
+    "loc": 24950
+  },
+  {
+    "name": "gear",
+    "start": "2026-08",
+    "end": "2026-09",
+    "days": 18.6,
+    "commits": 54,
+    "loc": 3065
+  },
+  {
+    "name": "music",
+    "start": "2021-02",
+    "end": "2026-10",
+    "days": 393.8,
+    "commits": 228,
+    "loc": 5068
+  }
+]

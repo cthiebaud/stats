@@ -1,0 +1,308 @@
+# Repo inventory & grouping for the AI-dev-efficiency chart.
+# status: include | exclude | tbd
+#   include -> part of the final chart, as one row ("project")
+#   exclude -> deliberately out of scope (reason in `note`)
+#   tbd     -> not yet decided, needs Christophe's call
+#
+# A group's `repos` list may span multiple owners (personal account + one or
+# more orgs) -- this is expected: several projects started under cthiebaud/
+# or a shared org and later grew their own dedicated org.
+
+groups:
+
+  # ---------------------------------------------------------------- include
+  - name: parimagine
+    status: include
+    site: https://dev.parimagine.fr
+    repos:
+      - {owner: parimagine, repo: parimagine}
+      - {owner: parimagine, repo: parimagine.github.io}
+
+  - name: earthlydelights
+    status: include
+    site: null
+    repos:
+      - {owner: earthlydelights, repo: image-server}
+      - {owner: earthlydelights, repo: earthlydelights.github.io}
+    note: >
+      Site dead (checked 2026-10-15): CNAME points to earthlydelights.garden,
+      which is NXDOMAIN; github.io URL 301-redirects there too, so there's no
+      live fallback either.
+
+  - name: covid
+    status: include
+    site: null
+    repos:
+      - {owner: usa-covid-aequologica-net, repo: usa.covid.aequologica.net}
+      - {owner: covid-aequologica-net, repo: covid-aequologica-net.github.io}
+      - {owner: covid-aequologica-net, repo: proxy}
+    note: >
+      Two sibling orgs (usa-covid-... and covid-...) feeding one project.
+      covid-aequologica-net.github.io is a FORK (isFork=true) -- double check
+      it's actually Christophe's own commits before counting it, same caution
+      as the fork-exclusion heuristic used elsewhere. Site dead (checked
+      2026-10-15): CNAME points to covid.aequologica.net, which is NXDOMAIN;
+      same for usa.covid.aequologica.net.
+
+  - name: sangiosleague
+    status: include
+    site: null
+    repos:
+      - {owner: sangiosleague, repo: sangiosleague.github.io}
+      - {owner: sangiosleague, repo: sangiosleague.api}
+    note: >
+      Site dead (checked 2026-10-15): github.io URL 301-redirects to
+      sangiosleague.it, which is NXDOMAIN.
+
+  - name: sangiovannilipioni
+    status: include
+    site: null
+    repos:
+      - {owner: sangiovannilipioni, repo: sangiovannilipioni.github.io}
+      - {owner: sangiovannilipioni, repo: sangiovannilipioni.api}
+    note: >
+      sangiovannilipioni.net (the CNAME still configured in the repo, and
+      still resolving -- GitHub's Pages API and DNS alone both suggested it
+      was live) was taken over by another team and now serves a different,
+      unrelated project (confirmed by Christophe 2026-10-15). Do not link to
+      it, despite it technically responding.
+
+  - name: ciaccona
+    status: include
+    site: https://ciaccona.cthiebaud.com
+    repos:
+      - {owner: cthiebaud, repo: ciaccona}
+      - {owner: musicollator, repo: ciaccona}
+      - {owner: musicollator, repo: ciaccona-stationary}
+      - {owner: cthiebaud, repo: sheet-music}
+    note: "ciaccona-stationary contributes commits/days but ~0 LOC (confirmed no code)."
+
+  - name: bookshelves
+    status: include
+    site: https://bookshelves.cthiebaud.com
+    repos:
+      - {owner: cthiebaud, repo: bookshelves}
+      - {owner: cthiebaud, repo: bookcovers}
+
+  - name: aletheia
+    status: include
+    site: https://aletheia.cthiebaud.com
+    repos:
+      - {owner: cthiebaud, repo: truth}
+      - {owner: cthiebaud, repo: truth-reservoir}
+    note: "\"aletheia\" (Greek for \"truth\") == cthiebaud/truth + cthiebaud/truth-reservoir (archived predecessor)."
+
+  - name: bwv
+    status: include
+    site: https://bwv.cthiebaud.com
+    repos:
+      - {owner: cthiebaud, repo: bwv543}      # archived, explicit fold-in per PROMPT.md
+      - {owner: cthiebaud, repo: bwv849}
+      - {owner: cthiebaud, repo: bwv1006}     # archived
+      - {owner: cthiebaud, repo: bwv-zeug}    # archived
+      - {owner: cthiebaud, repo: bwv}         # archived
+      - {owner: musicollator, repo: bwv}
+      - {owner: musicollator, repo: bwv543}
+      - {owner: musicollator, repo: bwv1006}
+      - {owner: musicollator, repo: bwv245}
+      - {owner: musicollator, repo: bwv639}
+      - {owner: musicollator, repo: bwv659}
+      - {owner: musicollator, repo: bwv846}
+      - {owner: musicollator, repo: bwv849}
+      - {owner: musicollator, repo: bwv988}
+      - {owner: musicollator, repo: bwv-siegel}
+    note: >
+      PROMPT.md only names bwv543 explicitly, but there are clearly many more
+      BWV-numbered repos (one per piece?) across cthiebaud/ and musicollator/.
+      ASSUMPTION: all of these merge into the single "bwv" chart row, same as
+      ciaccona's multi-repo merge. Please confirm this is intentional and the
+      list above is complete (vs. splitting some out as their own projects).
+
+  - name: mundial
+    status: include
+    site: https://mundial.cthiebaud.com
+    repos:
+      - {owner: born-in-plays-for, repo: mundial}
+      - {owner: born-in-plays-for, repo: mundial-build}
+      - {owner: born-in-plays-for, repo: mundial-data}
+      - {owner: born-in-plays-for, repo: mundial-server}
+    note: >
+      born-in-plays-for/.github is org-metadata, not a project repo --
+      omitted. GitHub's Pages API reports the site's last build as
+      status=errored (checked 2026-10-15) -- the site still serves fine
+      (the previous successful build stays live), but worth knowing a more
+      recent deploy attempt broke.
+
+  - name: gear
+    status: include
+    site: https://gear.cthiebaud.com
+    repos:
+      - {owner: cthiebaud, repo: gear}
+
+  # ---------------------------------------------------------------- exclude
+  - name: iroif
+    status: exclude
+    repos: [{owner: cthiebaud, repo: iroif}]
+    note: "infrastructure/meta, not a true project (per PROMPT.md)."
+
+  - name: aequologica
+    status: exclude
+    repos:
+      - {owner: aequologica, repo: aequologica.github.io}
+      - {owner: aequologica, repo: deputes-scraper}
+      - {owner: aequologica, repo: reveal.js}
+    note: "infrastructure/meta (per PROMPT.md). reveal.js is also a fork."
+
+  - name: cthiebaud.github.io
+    status: exclude
+    repos: [{owner: cthiebaud, repo: cthiebaud.github.io}]
+    note: "infrastructure/meta (per PROMPT.md)."
+
+  - name: openricard
+    status: exclude
+    repos: [{owner: cthiebaud, repo: openricard.net}]
+    note: "joke project (per PROMPT.md)."
+
+  - name: klam
+    status: exclude
+    repos: [{owner: cthiebaud, repo: klam}]
+    note: "too tiny (per PROMPT.md)."
+
+  - name: emugnier
+    status: exclude
+    repos: [{owner: cthiebaud, repo: emugnier}]
+    note: "too tiny (per PROMPT.md); also a fork."
+
+  - name: music
+    status: include
+    site: https://music.cthiebaud.com
+    repos:
+      - {owner: cthiebaud, repo: music}
+      - {owner: cthiebaud, repo: vinyl}
+    note: >
+      REVERSES PROMPT.md's prior exclusion ("too tiny") -- Christophe
+      confirmed (2026-10-15) that merging in vinyl gives it enough scope to
+      count as a 12th included project. Final list is now 12 projects, not 11.
+
+  - name: openmozart
+    status: exclude
+    repos: [{owner: cthiebaud, repo: openmozart.net}]
+    note: "too tiny (per PROMPT.md)."
+
+  - name: hat
+    status: exclude
+    repos: []
+    note: >
+      Professional assignment, not hobby work (per PROMPT.md). Not found in
+      this inventory at all (not owned by cthiebaud or any of his orgs) --
+      presumably lives under an employer/client org he isn't a member of, or
+      was named differently. No action needed since it's excluded anyway.
+
+  - name: athenaeum
+    status: exclude
+    repos:
+      - {owner: athenaeum-brew, repo: password-validator-acceptance}
+      - {owner: athenaeum-brew, repo: password-validator}
+      - {owner: athenaeum-brew, repo: password-validator-impl}
+      - {owner: athenaeum-brew, repo: making-of}
+      - {owner: athenaeum-brew, repo: einfuehrung}
+      - {owner: athenaeum-brew, repo: questioneer}
+      - {owner: athenaeum-brew, repo: maven-repo}
+      - {owner: athenaeum-brew, repo: concurrent-examples}
+      - {owner: athenaeum-brew, repo: webapp-examples}
+      - {owner: athenaeum-brew, repo: javafx-examples}
+      - {owner: athenaeum-brew, repo: javafx-webview-example}
+      - {owner: athenaeum-brew, repo: yaml-example}
+      - {owner: athenaeum-brew, repo: console-example}
+      - {owner: athenaeum-brew, repo: oop-example}
+      - {owner: athenaeum-brew, repo: generics-example}
+      - {owner: cthiebaud, repo: mythos}
+      - {owner: cthiebaud, repo: repository}
+    note: >
+      Side project done on a professional course, not hobby (per PROMPT.md).
+      This resolves the whole athenaeum-brew org in one shot, plus mythos and
+      repository (personal scratch repos tied to the same course work).
+
+  # -------------------------------------------------------------------- tbd
+  # Personal forks of 3rd-party code -- almost certainly not Christophe's own
+  # work (consistent with emugnier already being excluded as "too tiny" and
+  # also happening to be a fork). Defaulting the recommendation to exclude,
+  # but leaving status=tbd so it's a deliberate confirmation, not a silent cut.
+  - name: hacklily
+    status: exclude
+    repos: [{owner: cthiebaud, repo: hacklily}]
+    note: "Fork of 3rd-party code. Recommend: exclude."
+  - name: PasswordValidator
+    status: exclude
+    repos: [{owner: cthiebaud, repo: PasswordValidator}]
+    note: "Fork, archived. Likely a personal copy of the athenaeum-brew course exercise. Recommend: exclude."
+  - name: password_validator
+    status: exclude
+    repos: [{owner: cthiebaud, repo: password_validator}]
+    note: "Fork, archived. Same as above -- likely a duplicate/variant. Recommend: exclude."
+  - name: Cryptique
+    status: exclude
+    repos: [{owner: cthiebaud, repo: Cryptique}]
+    note: "Fork, archived. Recommend: exclude."
+  - name: idontknow
+    status: exclude
+    repos: [{owner: cthiebaud, repo: idontknow}]
+    note: "Fork, archived. Recommend: exclude."
+  - name: MutopiaProject
+    status: exclude
+    repos: [{owner: cthiebaud, repo: MutopiaProject}]
+    note: "Fork, archived. Recommend: exclude."
+  - name: element-plus-nuxt-starter
+    status: exclude
+    repos: [{owner: cthiebaud, repo: element-plus-nuxt-starter}]
+    note: "Fork, archived, boilerplate starter template. Recommend: exclude."
+  - name: HTTP-Proxy-Servlet
+    status: exclude
+    repos: [{owner: cthiebaud, repo: HTTP-Proxy-Servlet}]
+    note: "Fork, archived, utility library. Recommend: exclude."
+  - name: reveal.js (personal fork)
+    status: exclude
+    repos: [{owner: cthiebaud, repo: reveal.js}]
+    note: "Fork, archived, presentation framework. Recommend: exclude."
+
+  # Non-fork personal repos with no mention anywhere in PROMPT.md -- genuinely
+  # unknown, need Christophe's judgment call on each.
+  # (vinyl -> folded into "music"; mythos, repository -> folded into
+  # "athenaeum"; truth, truth-reservoir -> folded into "aletheia";
+  # bookcovers -> folded into "bookshelves"; sheet-music -> folded into
+  # "ciaccona". See those groups above.)
+  - name: lego
+    status: exclude
+    repos: [{owner: cthiebaud, repo: lego}]
+    note: "Archived, not a fork. Unknown nature -- hobby project?"
+  - name: burbain
+    status: exclude
+    repos: [{owner: cthiebaud, repo: burbain}]
+    note: "Archived, not a fork. Unknown nature."
+  - name: next-netlify-starter
+    status: exclude
+    repos: [{owner: cthiebaud, repo: next-netlify-starter}]
+    note: "Archived, boilerplate starter template (not a fork, but name says it all). Recommend: exclude."
+  - name: nuxt3-starter
+    status: exclude
+    repos: [{owner: cthiebaud, repo: nuxt3-starter}]
+    note: "Archived, boilerplate starter template. Recommend: exclude."
+
+  # Orgs that look like sites/projects built for *other people*, not
+  # Christophe's own hobby projects -- but he coded them, so worth asking.
+  - name: carolethomas
+    status: exclude
+    repos: [{owner: carolethomas, repo: carolethomas.github.io}]
+    note: "Looks like a site built for someone else (Carole Thomas). In scope as Christophe's dev work, or out as 'not his project'?"
+  - name: mugnierandthiebaud
+    status: exclude
+    repos:
+      - {owner: mugnierandthiebaud, repo: mugnierandthiebaud.github.io}
+      - {owner: mugnierandthiebaud, repo: docker-lilypond}
+    note: "Joint-name org (site + a forked docker-lilypond). docker-lilypond is a fork -- likely exclude that one regardless. Site itself: in or out?"
+  - name: eric-mugnier
+    status: exclude
+    repos:
+      - {owner: eric-mugnier, repo: tete-de-veau-ravigote}
+      - {owner: eric-mugnier, repo: eric-mugnier.github.io}
+    note: "Looks like a site/project for someone else (Eric Mugnier). In scope or out?"
