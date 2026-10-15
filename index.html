@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>AI Development Efficiency</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
@@ -208,29 +209,34 @@
 
 <div class="viz-root">
   <div class="card" id="card">
-    <h1>Scope delivered per day, 2013&ndash;2026</h1>
+    <h1>Coding bursts, 2013&ndash;2026</h1>
 
     <details id="about" open>
       <summary>About this chart</summary>
       <p class="subtitle">
-        Across 12 personal hobby projects (professional/course work and tiny ones excluded), feature scope
-        shipped per day of active development (self-rated scope &divide; active days &mdash;
-        summing each project's genuine working episodes, idle gaps between them excluded) jumps
-        2&ndash;4&times; exactly where Claude Code <em>agentic</em> commit attribution appears
-        (bwv, mundial, gear).
+        Across 12 personal hobby projects (professional/course work and tiny ones excluded), each gap-clustered
+        burst of real activity &mdash; not each whole project &mdash; is its own row (a 120-day idle gap splits
+        one; a single-day blip of 1&ndash;3 commits is dropped as noise, not drawn). Commits/day jumps roughly
+        2&ndash;4&times; exactly where Claude Code <em>agentic</em> commit attribution appears (bwv2, mundial,
+        gear) &mdash; most visibly in bwv, where a tiny 2022 scaffold (bwv1, 23 commits, 22 LOC) and a 2025
+        rewrite (bwv2, 662 commits, 13,026 LOC) sit three years apart in the same repo but are, in every way
+        that matters here, two different projects.
       </p>
       <div class="legend" id="legend"></div>
       <div class="foot">
-        <strong>Reading this honestly:</strong> scope is a subjective 1&ndash;5 self-rating, not an
-        objective feature count &mdash; there's no clean automatable proxy for "features" across such
-        different projects. LOC is a current-snapshot measure (cloc, excluding SVG/JSON/YAML/CSV/XML,
-        plus manually-excluded vendor libraries and generated/data-dump files),
-        not lines-written-during-the-window. AI-attribution % is measured with
+        <strong>Reading this honestly:</strong> a burst's LOC is NOT a current snapshot &mdash; it's that
+        project's LOC (cloc, excluding SVG/JSON/YAML/CSV/XML, plus manually-excluded vendor libraries and
+        generated/data-dump files) as of the end of that specific burst, computed by checking out each
+        contributing repo's last commit at or before the burst's end date. AI-attribution % is measured with
         <a href="https://github.com/chaoss/disclosure" target="_blank" rel="noopener">chaoss/disclosure</a>
         (committer emails, co-author trailers, tool mentions for Claude Code, Cursor, Copilot, ChatGPT, Aider)
         &mdash; it only catches disclosed, git-level traces, so chat-based AI use with no trailer or tool
-        mention left in the repo (manually typed or pasted) is invisible to it, and true involvement
-        may be higher than shown, especially before mid-2025.
+        mention left in the repo (manually typed or pasted) is invisible to it, and true involvement may be
+        higher than shown, especially before mid-2025. It is also measured per <em>project</em>, not per
+        burst &mdash; every burst of a multi-burst project currently shows its parent's one blended value, so
+        bwv1 (2022, long before Claude Code existed) displays the same 3.4% as bwv2 (2025) only because they
+        share that average. Treat any multi-burst project's AI-attribution % as approximate until it's
+        re-measured per burst.
       </div>
     </details>
 
@@ -245,7 +251,7 @@
     <p class="zoomhint" id="zoomhint">Scroll to zoom, drag to pan, double-click to reset — bars resolve into daily rhythm as you zoom in.</p>
 
     <div id="chartWrap">
-      <svg id="chart" viewBox="0 0 1320 420" role="img" aria-label="Timeline of scope delivered per day per project, 2013 to 2026, positioned by actual start and end dates, drawn as zoomable per-day activity bars with line thickness proportional to commit count"></svg>
+      <svg id="chart" viewBox="0 0 1320 420" role="img" aria-label="Timeline of coding bursts, 2013 to 2026, each positioned by its own actual start and end dates, drawn as zoomable per-day activity bars centered on a commits-per-day line that ends in a circle sized by LOC at the end of the burst"></svg>
     </div>
 
     <div id="tableWrap" style="display:none;">
@@ -260,28 +266,48 @@
 (function () {
   "use strict";
 
-  // Recalculated 2026-10-15 uniquely from clones/<group>/<owner>/<repo>
-  // (repos.yaml's `include` groups) via scripts/gather_data.py -- supersedes
-  // the earlier hand-maintained ENTRIES-derived numbers, which predated the
-  // full repo-inventory audit and had fallen out of sync with repos.yaml
-  // (e.g. covid/bwv/mundial each cover more repos now; bookshelves/aletheia
-  // now fold in bookcovers/truth-reservoir). aiPct is NOT recalculated here
-  // -- it comes from the separate `disclosure` tool (currently uninstalled),
-  // so existing values are carried over unchanged; "music" is a new 12th
-  // project with no disclosure run yet, flagged with aiPct: null.
+  // Rebuilt 2026-10-15 as bursts, not whole projects: a project's commit
+  // history is split into gap-clustered episodes (120-day threshold, same
+  // rule gather_data.py always used for "active days" -- see
+  // scripts/compute_bursts.py), and each episode -- not each project -- is
+  // its own row. bwv's 2022 scaffold and its 2025 rewrite share a repo but
+  // are, in every way that matters here, two different projects three years
+  // apart; a single "bwv" row averaged across that gap was hiding exactly
+  // the story this chart exists to tell. Bursts spanning a single calendar
+  // day (1-3 commits -- a lone fix, not a coding campaign) are dropped
+  // entirely, confirmed against the real distribution: the smallest *kept*
+  // burst spans 27.2 days, so this wasn't a tuned cutoff. `loc` is NOT a
+  // current snapshot -- it's that project's LOC as of the END of this
+  // specific burst (checkout each contributing repo's last commit at or
+  // before the burst's end date, cloc it, sum -- scripts/compute_burst_loc.py),
+  // so bwv1's 22 and bwv2's 13,026 are genuinely different points in time,
+  // not one blended total. aiPct is NOT re-measured per burst -- the
+  // `disclosure` tool that produces it isn't installed in this environment
+  // right now, so every burst inherits its parent project's one project-wide
+  // value. This is the one place a burst split is known to mislead: bwv1
+  // (2022, long before Claude Code existed) shows the same 3.4% as bwv2
+  // (2025) only because they share a parent average -- see the footer note.
   const data = [
-    { name: "parimagine",          days: 210.7,  commits: 175,  loc: 3241,  aiPct: 0,    scope: 2, start: "2013-04", end: "2018-04", site: "https://dev.parimagine.fr" },
-    { name: "earthlydelights",     days: 1039.3, commits: 235,  loc: 3115,  aiPct: 0,    scope: 2, start: "2016-01", end: "2019-04", site: null },
-    { name: "covid",               days: 144.3,  commits: 221,  loc: 11994, aiPct: 0,    scope: 4, start: "2020-06", end: "2021-09", site: null },
-    { name: "sangiosleague",       days: 63.4,   commits: 242,  loc: 1352,  aiPct: 0,    scope: 1, start: "2021-07", end: "2021-09", site: null },
-    { name: "sangiovannilipioni",  days: 136.1,  commits: 135,  loc: 4810,  aiPct: 0,    scope: 2, start: "2021-08", end: "2022-04", site: null },
-    { name: "ciaccona",            days: 244.7,  commits: 1280, loc: 20538, aiPct: 0.5,  scope: 3, start: "2021-11", end: "2025-02", site: "https://ciaccona.cthiebaud.com" },
-    { name: "bookshelves",         days: 123.8,  commits: 495,  loc: 4307,  aiPct: 0.9,  scope: 2, start: "2023-10", end: "2024-02", site: "https://bookshelves.cthiebaud.com" },
-    { name: "aletheia",            days: 105.0,  commits: 646,  loc: 5825,  aiPct: 0.2,  scope: 3, start: "2024-01", end: "2024-04", site: "https://aletheia.cthiebaud.com" },
-    { name: "bwv",                 days: 88.8,   commits: 685,  loc: 13026, aiPct: 3.4,  scope: 4, start: "2022-04", end: "2025-07", site: "https://bwv.cthiebaud.com" },
-    { name: "mundial",             days: 52.3,   commits: 1358, loc: 24950, aiPct: 66.6, scope: 3, start: "2026-06", end: "2026-07", site: "https://mundial.cthiebaud.com" },
-    { name: "gear",                days: 18.6,   commits: 54,   loc: 3065,  aiPct: 64.8, scope: 2, start: "2026-08", end: "2026-09", site: "https://gear.cthiebaud.com" },
-    { name: "music",               days: 393.8,  commits: 228,  loc: 5068,  aiPct: null, scope: 3, start: "2021-02", end: "2026-10", site: "https://music.cthiebaud.com" },
+    { name: "parimagine", project: "parimagine", start: "2013-04-28", end: "2013-11-25", commits: 173, activeDays: 210.6, loc: 3261, aiPct: 0, site: "https://dev.parimagine.fr" },
+    { name: "earthlydelights1", project: "earthlydelights", start: "2016-01-16", end: "2016-09-01", commits: 208, activeDays: 228.6, loc: 3060, aiPct: 0, site: null },
+    { name: "earthlydelights2", project: "earthlydelights", start: "2017-01-21", end: "2019-04-12", commits: 27, activeDays: 810.7, loc: 3115, aiPct: 0, site: null },
+    { name: "covid", project: "covid", start: "2020-12-20", end: "2021-05-13", commits: 216, activeDays: 144.3, loc: 11994, aiPct: 0, site: null },
+    { name: "music1", project: "music", start: "2021-02-04", end: "2021-05-06", commits: 62, activeDays: 90.8, loc: 1278, aiPct: null, site: "https://music.cthiebaud.com" },
+    { name: "sangiosleague", project: "sangiosleague", start: "2021-07-20", end: "2021-09-22", commits: 242, activeDays: 63.4, loc: 1352, aiPct: 0, site: null },
+    { name: "sangiovannilipioni", project: "sangiovannilipioni", start: "2021-08-09", end: "2021-12-23", commits: 134, activeDays: 136.1, loc: 4810, aiPct: 0, site: null },
+    { name: "ciaccona1", project: "ciaccona", start: "2021-11-28", end: "2021-12-22", commits: 91, activeDays: 24.5, loc: 20, aiPct: 0.5, site: "https://ciaccona.cthiebaud.com" },
+    { name: "bwv1", project: "bwv", start: "2022-04-01", end: "2022-05-06", commits: 23, activeDays: 35.0, loc: 22, aiPct: 3.4, site: "https://bwv.cthiebaud.com" },
+    { name: "ciaccona2", project: "ciaccona", start: "2023-03-16", end: "2023-07-09", commits: 1124, activeDays: 114.9, loc: 20624, aiPct: 0.5, site: "https://ciaccona.cthiebaud.com" },
+    { name: "bookshelves", project: "bookshelves", start: "2023-10-22", end: "2024-02-23", commits: 495, activeDays: 123.8, loc: 4307, aiPct: 0.9, site: "https://bookshelves.cthiebaud.com" },
+    { name: "ciaccona3", project: "ciaccona", start: "2023-12-11", end: "2024-01-07", commits: 38, activeDays: 27.2, loc: 20936, aiPct: 0.5, site: "https://ciaccona.cthiebaud.com" },
+    { name: "aletheia", project: "aletheia", start: "2024-01-01", end: "2024-04-15", commits: 646, activeDays: 105.0, loc: 5825, aiPct: 0.2, site: "https://aletheia.cthiebaud.com" },
+    { name: "music2", project: "music", start: "2024-01-13", end: "2024-02-16", commits: 80, activeDays: 34.1, loc: 1599, aiPct: null, site: "https://music.cthiebaud.com" },
+    { name: "music3", project: "music", start: "2024-11-12", end: "2025-07-19", commits: 12, activeDays: 249.0, loc: 1620, aiPct: null, site: "https://music.cthiebaud.com" },
+    { name: "ciaccona4", project: "ciaccona", start: "2024-12-08", end: "2025-02-24", commits: 24, activeDays: 78.1, loc: 20538, aiPct: 0.5, site: "https://ciaccona.cthiebaud.com" },
+    { name: "bwv2", project: "bwv", start: "2025-05-19", end: "2025-07-12", commits: 662, activeDays: 53.7, loc: 13026, aiPct: 3.4, site: "https://bwv.cthiebaud.com" },
+    { name: "mundial", project: "mundial", start: "2026-06-05", end: "2026-07-27", commits: 1358, activeDays: 52.3, loc: 24950, aiPct: 66.6, site: "https://mundial.cthiebaud.com" },
+    { name: "gear", project: "gear", start: "2026-08-24", end: "2026-09-12", commits: 54, activeDays: 18.6, loc: 3065, aiPct: 64.8, site: "https://gear.cthiebaud.com" },
+    { name: "music4", project: "music", start: "2026-09-23", end: "2026-10-13", commits: 72, activeDays: 20.0, loc: 5068, aiPct: null, site: "https://music.cthiebaud.com" },
   ];
 
   // Per-day lines-changed (added+deleted) for cloc-passing files, merged
@@ -292,56 +318,76 @@
   const dailySeries = {"parimagine":{"2013-04-28":872,"2013-05-19":958,"2013-05-20":3157.0,"2013-05-21":868,"2013-05-22":946,"2013-05-23":795,"2013-05-24":3157.0,"2013-05-25":10,"2013-05-26":331,"2013-05-27":652,"2013-05-28":1671,"2013-05-29":6,"2013-06-08":1290,"2013-06-12":56,"2013-06-21":11,"2013-06-24":494,"2013-06-25":283,"2013-06-27":344,"2013-06-28":280,"2013-06-29":656,"2013-07-01":91,"2013-07-29":293,"2013-09-10":114,"2013-09-27":2,"2013-10-28":88,"2013-11-01":55,"2013-11-24":3157.0,"2013-11-25":210,"2018-04-25":185},"earthlydelights":{"2016-01-16":138,"2016-01-17":629.0,"2016-01-18":384,"2016-01-19":320,"2016-01-20":87,"2016-01-23":10,"2016-01-24":59,"2016-01-29":629.0,"2016-02-01":26,"2016-02-02":167,"2016-02-03":629.0,"2016-02-04":596,"2016-02-05":565,"2016-02-06":69,"2016-02-07":35,"2016-02-09":629.0,"2016-02-10":100,"2016-02-11":150,"2016-02-12":489,"2016-02-13":586,"2016-02-17":10,"2016-02-21":66,"2016-02-26":146,"2016-03-10":161,"2016-04-21":10,"2016-05-29":4,"2016-06-21":12,"2016-06-25":106,"2016-06-28":4,"2016-07-14":8,"2017-01-21":4,"2017-05-03":28,"2017-06-14":4,"2017-08-23":14,"2017-09-25":5,"2017-10-04":38,"2018-01-05":4,"2018-03-03":279,"2018-08-08":200,"2018-08-09":4,"2018-08-30":2,"2018-09-27":186,"2018-12-19":4,"2019-01-23":108,"2019-04-12":629.0},"covid":{"2020-06-15":401,"2020-12-20":3069.6,"2020-12-21":948,"2020-12-22":3069.6,"2020-12-23":3069.6,"2020-12-24":150,"2020-12-25":2764,"2020-12-26":2008,"2020-12-27":2756,"2020-12-28":2140,"2020-12-29":2258,"2020-12-30":50,"2020-12-31":864,"2021-01-01":1108,"2021-01-02":287,"2021-01-03":202,"2021-01-15":71,"2021-01-18":12,"2021-05-06":35,"2021-05-07":1028,"2021-05-08":1442,"2021-05-09":37,"2021-05-13":3},"sangiosleague":{"2021-07-20":248,"2021-07-21":132,"2021-07-22":120,"2021-07-23":487,"2021-07-24":4,"2021-07-25":158,"2021-07-26":316,"2021-07-27":607.4,"2021-07-28":607.4,"2021-07-29":464,"2021-07-30":21,"2021-08-01":151,"2021-08-05":6,"2021-08-10":88,"2021-08-11":90,"2021-09-02":10,"2021-09-11":218},"sangiovannilipioni":{"2021-08-09":1940.5,"2021-08-10":112,"2021-08-11":436,"2021-08-19":20,"2021-08-20":2,"2021-08-21":3,"2021-08-25":15,"2021-08-26":371,"2021-09-02":4,"2021-09-03":3,"2021-09-04":146,"2021-09-05":7,"2021-09-08":1940.5,"2021-09-09":611,"2021-09-10":300,"2021-09-11":183},"ciaccona":{"2021-11-28":2,"2021-12-12":9,"2021-12-22":20,"2022-09-27":0,"2023-03-16":11,"2023-03-17":67,"2023-03-18":1132,"2023-03-19":599,"2023-03-20":197,"2023-03-21":144,"2023-03-22":781,"2023-03-23":286,"2023-03-24":230,"2023-03-25":472,"2023-03-26":200,"2023-03-27":271,"2023-03-28":2366.3,"2023-03-29":709,"2023-03-30":952,"2023-03-31":1786,"2023-04-01":2366.3,"2023-04-02":556,"2023-04-03":770,"2023-04-04":2366.3,"2023-04-05":1074,"2023-04-06":310,"2023-04-07":2004,"2023-04-08":660,"2023-04-09":1164,"2023-04-10":1631,"2023-04-11":477,"2023-04-12":231,"2023-04-13":684,"2023-04-14":604,"2023-04-15":408,"2023-04-16":564,"2023-04-17":460,"2023-04-18":697,"2023-04-19":894,"2023-04-20":1120,"2023-04-21":911,"2023-04-22":549,"2023-04-23":1876,"2023-04-24":887,"2023-04-25":1401,"2023-04-26":1899,"2023-04-27":446,"2023-04-28":480,"2023-04-29":1308,"2023-05-01":2366.3,"2023-05-02":1492,"2023-05-03":321,"2023-05-04":377,"2023-05-05":2366.3,"2023-05-06":527,"2023-05-07":761,"2023-05-08":531,"2023-05-09":2366.3,"2023-05-10":2366.3,"2023-05-11":2366.3,"2023-05-12":646,"2023-05-15":2,"2023-05-16":1796,"2023-05-17":1030,"2023-05-18":464,"2023-05-19":2366.3,"2023-05-20":1839,"2023-05-21":2366.3,"2023-05-22":2366.3,"2023-05-23":2063,"2023-05-24":1614,"2023-05-25":87,"2023-05-26":775,"2023-05-27":22,"2023-05-28":1729,"2023-05-29":620,"2023-05-30":434,"2023-05-31":275,"2023-06-01":1408,"2023-06-02":245,"2023-06-03":629,"2023-06-04":524,"2023-06-05":888,"2023-06-06":244,"2023-06-07":663,"2023-06-08":1287,"2023-06-22":196,"2023-06-23":278,"2023-06-24":99,"2023-06-25":177,"2023-06-26":95,"2023-06-28":12,"2023-12-11":420,"2023-12-12":272,"2023-12-14":64,"2023-12-15":104,"2023-12-17":18,"2024-01-07":167,"2024-12-08":514,"2024-12-09":203,"2024-12-10":116,"2025-02-24":68},"bookshelves":{"2023-10-22":233,"2023-10-23":94,"2023-10-24":422,"2023-10-25":73,"2023-10-26":113,"2023-10-27":21,"2023-10-28":116,"2023-10-29":289,"2023-10-30":1055.1,"2023-10-31":34,"2023-11-01":329,"2023-11-02":7,"2023-11-03":2,"2023-11-04":210,"2023-11-05":3,"2023-11-06":128,"2023-11-07":474,"2023-11-08":386,"2023-11-09":495,"2023-11-10":776,"2023-11-11":934,"2023-11-12":1055.1,"2023-11-13":894,"2023-11-14":184,"2023-11-15":163,"2023-11-16":32,"2023-11-17":511,"2023-11-18":837,"2023-11-19":849,"2023-11-20":691,"2023-11-21":987,"2023-11-22":1055.1,"2023-11-23":730,"2023-11-25":1055.1,"2023-11-26":965,"2023-11-27":575,"2023-11-28":240,"2023-11-29":516,"2023-11-30":669,"2023-12-01":47,"2023-12-02":1055.1,"2023-12-03":412,"2023-12-04":318,"2023-12-05":199,"2023-12-06":586,"2023-12-18":49,"2024-01-11":23,"2024-02-01":2},"aletheia":{"2024-01-01":604,"2024-01-02":498,"2024-01-03":187,"2024-01-04":783,"2024-01-05":223,"2024-01-06":504,"2024-01-07":649,"2024-01-08":596,"2024-01-09":54,"2024-01-10":644,"2024-01-11":166,"2024-01-12":745,"2024-01-13":175,"2024-01-16":84,"2024-02-02":102,"2024-02-04":419,"2024-02-05":129,"2024-02-16":151,"2024-02-20":1,"2024-02-25":2,"2024-02-26":407,"2024-02-27":404,"2024-02-28":205,"2024-02-29":171,"2024-03-01":293,"2024-03-02":193,"2024-03-03":489,"2024-03-04":843,"2024-03-05":536,"2024-03-06":235,"2024-03-07":553,"2024-03-08":207,"2024-03-09":940.4,"2024-03-10":659,"2024-03-11":442,"2024-03-12":738,"2024-03-13":495,"2024-03-14":29,"2024-03-15":478,"2024-03-16":2,"2024-03-17":520,"2024-03-18":940.4,"2024-03-19":413,"2024-03-20":645,"2024-03-21":940.4,"2024-03-22":940.4,"2024-03-24":165,"2024-03-25":149,"2024-03-26":149,"2024-03-27":940.4,"2024-03-28":110,"2024-03-29":940.4,"2024-03-30":546,"2024-03-31":872,"2024-04-01":407,"2024-04-02":592,"2024-04-03":4,"2024-04-04":940.4,"2024-04-05":226,"2024-04-13":135,"2024-04-14":241,"2024-04-15":6},"bwv":{"2022-04-01":1,"2022-04-09":5,"2022-04-25":35,"2025-05-19":1052,"2025-05-20":847,"2025-05-21":542,"2025-05-22":414,"2025-05-23":690,"2025-05-24":3742.6,"2025-05-25":3742.6,"2025-05-26":2378,"2025-05-27":3700,"2025-05-28":2633,"2025-05-29":744,"2025-05-30":2909,"2025-05-31":107,"2025-06-02":3742.6,"2025-06-03":1150,"2025-06-04":334,"2025-06-05":1910,"2025-06-06":1998,"2025-06-07":3742.6,"2025-06-08":1528,"2025-06-09":2966,"2025-06-10":1353,"2025-06-11":1013,"2025-06-12":1384,"2025-06-14":931,"2025-06-16":1355,"2025-06-17":78,"2025-06-18":637,"2025-06-19":310,"2025-06-26":23,"2025-06-27":547,"2025-06-28":191,"2025-06-29":598,"2025-07-11":6,"2025-07-12":488},"mundial":{"2026-06-05":2758,"2026-06-06":1873,"2026-06-07":1276,"2026-06-08":4146,"2026-06-09":2662,"2026-06-10":560,"2026-06-11":2070,"2026-06-12":655,"2026-06-13":774,"2026-06-14":768,"2026-06-15":1844,"2026-06-16":1057,"2026-06-17":837,"2026-06-18":1962,"2026-06-19":418,"2026-06-20":2345,"2026-06-21":4591.6,"2026-06-22":945,"2026-06-23":130,"2026-06-24":4591.6,"2026-06-25":1146,"2026-06-26":2469,"2026-06-27":4591.6,"2026-06-28":1826,"2026-06-29":2957,"2026-06-30":2293,"2026-07-01":1071,"2026-07-02":3726,"2026-07-03":1857,"2026-07-04":1771,"2026-07-05":1736,"2026-07-06":1766,"2026-07-07":657,"2026-07-08":3825,"2026-07-09":1231,"2026-07-10":876,"2026-07-11":1197,"2026-07-12":2051,"2026-07-13":2322,"2026-07-14":3610,"2026-07-15":119,"2026-07-16":4591.6,"2026-07-17":721,"2026-07-18":2277,"2026-07-19":1654,"2026-07-20":210,"2026-07-21":487,"2026-07-22":4591.6,"2026-07-23":1146,"2026-07-24":1413,"2026-07-25":1249,"2026-07-26":4591.6,"2026-07-27":709},"gear":{"2026-08-24":1667.3,"2026-08-25":1192,"2026-08-26":1520,"2026-08-27":784,"2026-08-28":266,"2026-08-29":521,"2026-09-02":332,"2026-09-03":359,"2026-09-06":5,"2026-09-12":2},"music":{"2021-02-04":1041.8,"2021-02-05":860,"2021-02-07":37,"2021-02-18":37,"2021-03-10":6,"2021-03-20":4,"2021-03-21":32,"2021-03-30":223,"2021-04-01":201,"2021-04-02":615,"2021-04-03":111,"2021-04-04":473,"2021-04-05":219,"2021-04-07":108,"2021-04-26":12,"2021-05-06":10,"2021-09-14":10,"2024-01-13":469,"2024-01-14":40,"2024-01-15":35,"2024-01-16":42,"2024-01-17":23,"2024-01-18":48,"2024-01-20":2,"2024-11-12":27,"2025-01-27":10,"2026-09-23":528,"2026-09-24":1041.8,"2026-09-25":1041.8,"2026-09-26":167,"2026-09-27":64,"2026-09-30":508,"2026-10-01":554,"2026-10-02":269,"2026-10-04":17,"2026-10-06":267,"2026-10-07":4,"2026-10-09":344,"2026-10-10":1041.8,"2026-10-11":1041.8,"2026-10-12":12,"2026-10-13":4}};
 
   data.forEach(function (d) {
-    d.commitsPerDay = d.commits / d.days;
-    d.locPerDay = d.loc / d.days;
-    d.scopePerDay = d.scope / d.days;
-    d.locPerScope = d.loc / d.scope;
+    d.commitsPerDay = d.commits / d.activeDays;
+    d.locPerDay = d.loc / d.activeDays;
   });
 
-  // ---- time parsing: day-precision (epoch days, UTC), not month buckets --
-  // needed for the per-day sparkline bars and for zoom. A project's drawn
-  // span now comes from its own daily-series extent when available (more
-  // accurate than the hand-entered start/end month, which predates the full
-  // repo-group audit in repos.yaml) and falls back to day-1-of-month otherwise.
+  // ---- time parsing: day-precision (epoch days, UTC) ----
   function dayIndexYMD(s) {
     const p = s.split("-").map(Number);
     return Math.floor(Date.UTC(p[0], p[1] - 1, p[2]) / 86400000);
   }
-  function dayIndexYM(s) {
-    const p = s.split("-").map(Number);
-    return Math.floor(Date.UTC(p[0], p[1] - 1, 1) / 86400000);
-  }
+  // A burst's span is its own start/end (real commit dates, from
+  // compute_bursts.py) -- NOT derived from dailySeries, which is keyed per
+  // *project* and would mix in another burst's days for any project with
+  // more than one. The per-day series is instead sliced down to just this
+  // burst's window, for the trail bars.
   data.forEach(function (d) {
-    const series = dailySeries[d.name] || {};
-    const pts = Object.keys(series)
+    d.dayStart = dayIndexYMD(d.start);
+    d.dayEnd = dayIndexYMD(d.end);
+    const series = dailySeries[d.project] || {};
+    d.series = Object.keys(series)
       .map(function (k) { return { day: dayIndexYMD(k), value: series[k] }; })
+      .filter(function (p) { return p.day >= d.dayStart && p.day <= d.dayEnd; })
       .sort(function (a, b) { return a.day - b.day; });
-    d.series = pts;
-    d.dayStart = pts.length ? pts[0].day : dayIndexYM(d.start);
-    d.dayEnd = pts.length ? pts[pts.length - 1].day : dayIndexYM(d.end);
     // kept for color assignment (start-date ordering) below
     d.startM = d.dayStart;
   });
 
-  // ---- one hue per project, assigned by golden-angle stepping through the
-  // projects in start-date order. A greedy "pick the hue furthest from the one
-  // conflicting neighbor" approach collapses to just 2 alternating hues as soon
-  // as most items only conflict with their immediate predecessor (verified: it
-  // did, exactly reproducing the near-duplicate reds the user flagged). The
+  // ---- circle radius (end-of-burst LOC), sqrt-scaled for area-proportionality ----
+  const locExtent = [
+    Math.min.apply(null, data.map(function (d) { return d.loc; })),
+    Math.max.apply(null, data.map(function (d) { return d.loc; })),
+  ];
+  function radius(loc) {
+    const t = (Math.sqrt(loc) - Math.sqrt(locExtent[0])) / (Math.sqrt(locExtent[1]) - Math.sqrt(locExtent[0]));
+    return 4 + t * 22; // 4px .. 26px
+  }
+
+  // ---- one hue per PROJECT (not per burst), assigned by golden-angle
+  // stepping through the projects in start-date order -- every burst of the
+  // same project (e.g. bwv1, bwv2) shares its hue, so the chart still reads
+  // as "one project, multiple episodes" rather than looking like 20 unrelated
+  // colors. A greedy "pick the hue furthest from the one conflicting
+  // neighbor" approach collapses to just 2 alternating hues as soon as most
+  // items only conflict with their immediate predecessor (verified: it did,
+  // exactly reproducing the near-duplicate reds the user flagged). The
   // golden angle (~137.5deg) has no small-integer resonances, so consecutive
   // time-ordered indices land far apart in hue and stay that way for many steps -
   // the standard low-discrepancy trick for "spread N points, neighbors maximally
   // separated" (same principle as phyllotaxis/sunflower seed placement).
-  // Lightness darkens with AI-attribution %.
+  // Lightness darkens with AI-attribution % (per burst, not per project, so
+  // once aiPct is re-measured per burst two episodes of the same project can
+  // still visibly differ in shade even though they share a hue).
   const L_LIGHT = 68;
   const L_DARK = 32;
   const SAT = 62;
   const GOLDEN_ANGLE = 137.50776;
 
-  const byStart = data.slice().sort(function (a, b) { return a.startM - b.startM; });
-  byStart.forEach(function (d, i) {
-    d.hue = (i * GOLDEN_ANGLE) % 360;
+  const projectFirstStart = {};
+  data.forEach(function (d) {
+    if (!(d.project in projectFirstStart) || d.startM < projectFirstStart[d.project]) {
+      projectFirstStart[d.project] = d.startM;
+    }
   });
+  const projectsByStart = Object.keys(projectFirstStart).sort(function (a, b) {
+    return projectFirstStart[a] - projectFirstStart[b];
+  });
+  const projectHue = {};
+  projectsByStart.forEach(function (project, i) {
+    projectHue[project] = (i * GOLDEN_ANGLE) % 360;
+  });
+  data.forEach(function (d) { d.hue = projectHue[d.project]; });
 
   data.forEach(function (d) {
     const t = Math.sqrt(d.aiPct / 100); // perceptual: even a few % shows a visible step
@@ -353,7 +399,7 @@
   const legend = document.getElementById("legend");
   const note = document.createElement("div");
   note.className = "legend-item";
-  note.textContent = "One hue per project — darker shade = more AI-attributed commits";
+  note.textContent = "One hue per burst — darker shade = more AI-attributed commits — circle size = LOC at the end of the burst";
   legend.appendChild(note);
 
   // ---- chart geometry ----
@@ -437,8 +483,11 @@
     W = containerWidth();
     plotW = W - marginLeft - marginRight;
 
+    // Labels now point at the circle (end of the burst), not the burst's
+    // start -- lane packing anchors on dayEnd + the circle's own radius so a
+    // big end-of-burst circle doesn't collide with a neighboring label lane.
     const items = data.map(function (d) {
-      const x1 = xFull(d.dayStart);
+      const x1 = xFull(d.dayEnd) + radius(d.loc) + 6;
       const probe = el("text", { x: -9999, y: -9999, class: "name-label" });
       probe.textContent = d.name;
       svg.appendChild(probe);
@@ -461,7 +510,7 @@
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
   }
 
-  const maxVal = Math.max.apply(null, data.map(function (d) { return d.scopePerDay; }));
+  const maxVal = Math.max.apply(null, data.map(function (d) { return d.commitsPerDay; }));
   const niceMax = Math.ceil(maxVal * 100) / 100 + 0.01;
   function y(v) { return plotTop + plotH * (1 - v / niceMax); }
 
@@ -588,13 +637,13 @@
       x: 14, y: plotTop + plotH / 2, class: "axis-title",
       "text-anchor": "middle", transform: "rotate(-90 14 " + (plotTop + plotH / 2) + ")",
     });
-    yTitle.textContent = "Scope delivered per day";
+    yTitle.textContent = "Commits per day (per burst)";
     svg.appendChild(yTitle);
 
     const xTitle = el("text", {
       x: marginLeft + plotW / 2, y: H - 4, class: "axis-title", "text-anchor": "middle",
     });
-    xTitle.textContent = "Calendar time, by actual start → end dates (bars = per-day activity, winsorized at the 90th percentile; track thickness ∝ total commits)";
+    xTitle.textContent = "Calendar time, by each burst's actual start → end dates (bars = per-day lines changed, centered on the commits/day line; circle = LOC at the end of the burst; track thickness ∝ total commits)";
     svg.appendChild(xTitle);
 
     // which projects intersect the current view, for the per-row max-bar-height
@@ -602,25 +651,26 @@
     // are actually visible at the same time, so bars get taller as you zoom
     // into a window with fewer simultaneously-visible projects.
     const visible = data.filter(function (d) { return d.dayStart <= viewMaxDay && d.dayEnd >= viewMinDay; });
-    const sortedY = visible.map(function (d) { return y(d.scopePerDay); }).sort(function (a, b) { return a - b; });
+    const sortedY = visible.map(function (d) { return y(d.commitsPerDay); }).sort(function (a, b) { return a - b; });
     let minGap = Infinity;
     for (let i = 1; i < sortedY.length; i++) minGap = Math.min(minGap, sortedY[i] - sortedY[i - 1]);
     const maxBarPx = clamp(minGap === Infinity ? 40 : minGap * 0.8, 4, 40);
 
     visible.forEach(function (d) {
       const info = computeBars(d, viewMinDay, viewMaxDay);
-      const yy = y(d.scopePerDay);
+      const yy = y(d.commitsPerDay);
       const sw = thickness(d.commits);
       const x1 = clamp(x(info ? info.spanStart : d.dayStart), marginLeft, W - marginRight);
       const x2 = clamp(x(info ? info.spanEnd : d.dayEnd), marginLeft, W - marginRight);
+      const r = radius(d.loc);
 
       const g = el("g", { class: "bar", tabindex: "0" });
       svg.appendChild(g); // attach to the live document now -- getComputedTextLength()
                           // below needs the label actually laid out to measure correctly
 
-      // leader line from the name label down to the span
+      // leader line from the name label down to the circle (burst end, not start)
       const labelY = labelTop + d.lane * laneH + laneH - 3;
-      g.appendChild(el("line", { x1: x1, y1: labelY + 3, x2: x1, y2: yy, class: "leader" }));
+      g.appendChild(el("line", { x1: x2, y1: labelY + 3, x2: x2, y2: yy, class: "leader" }));
 
       // faint track at the original commit-count thickness, under the bars
       g.appendChild(el("line", {
@@ -631,13 +681,23 @@
       // invisible, fatter hit-area spanning the visible bars, so the subtle
       // hover-brightness affordance (.bar:hover) is easy to trigger
       const hit = el("rect", {
-        x: x1, y: yy - maxBarPx - 6, width: Math.max(1, x2 - x1), height: maxBarPx + 16,
+        x: x1, y: yy - maxBarPx - 6, width: Math.max(1, x2 - x1), height: (maxBarPx + 6) * 2,
         fill: "transparent",
       });
       g.appendChild(hit);
 
+      // circle = LOC at the end of this burst, drawn BEFORE the bars so the
+      // bars always paint on top of it -- the circle is a supplementary
+      // marker, the per-day bars are the real data, and the circle must
+      // never visually hide them.
+      g.appendChild(el("circle", {
+        cx: x2, cy: yy, r: r, fill: d.color, opacity: "0.3",
+        stroke: d.color, "stroke-width": "1.5",
+      }));
+
       // per-day activity bars, sqrt-scaled (ignores outlier magnitude the
-      // same way commit-count thickness does) and growing up from the anchor
+      // same way commit-count thickness does), centered on the commits/day
+      // line -- extending equally up and down, not growing from a baseline
       let tallestBarPx = 0;
       if (info && info.bars.length) {
         info.bars.forEach(function (b) {
@@ -648,17 +708,19 @@
           const h = info.peak > 0 ? Math.max(1.2, maxBarPx * Math.sqrt(b.value / info.peak)) : 0;
           tallestBarPx = Math.max(tallestBarPx, h);
           g.appendChild(el("rect", {
-            x: bx1, y: yy - h, width: w, height: h, fill: d.color,
+            x: bx1, y: yy - h / 2, width: w, height: h, fill: d.color,
           }));
         });
       }
 
-      // full project name, horizontal, laid out in a collision-free lane,
-      // same color as its bars. Linked to the project's live public site
-      // when it has one (checked 2026-10-15; 3 of 12 have none -- see
-      // repos.yaml's `site` field, the canonical source for these URLs),
-      // with a small external-link glyph after the text, opening in a new tab.
-      const nameLbl = el("text", { x: x1, y: labelY, class: "name-label", "text-anchor": "start", fill: d.color });
+      // full burst name, horizontal, laid out in a collision-free lane,
+      // same color as its bars, positioned just past the circle. Linked to
+      // the parent project's live public site when it has one (checked
+      // 2026-10-15; 3 of 12 have none -- see repos.yaml's `site` field, the
+      // canonical source for these URLs), with a small external-link glyph
+      // after the text, opening in a new tab.
+      const labelX = x2 + r + 6;
+      const nameLbl = el("text", { x: labelX, y: labelY, class: "name-label", "text-anchor": "start", fill: d.color });
       nameLbl.textContent = d.name;
 
       if (d.site) {
@@ -667,15 +729,15 @@
         g.appendChild(link);
         const textW = nameLbl.getComputedTextLength();
         const iconSize = 10;
-        link.appendChild(externalLinkIcon(x1 + textW + 4, labelY - iconSize + 1, iconSize, d.color));
+        link.appendChild(externalLinkIcon(labelX + textW + 4, labelY - iconSize + 1, iconSize, d.color));
       } else {
         g.appendChild(nameLbl);
       }
 
-      // the two standout values get their number called out too
-      if (d.name === "bwv" || d.name === "gear") {
-        const lbl = el("text", { x: (x1 + x2) / 2, y: yy - tallestBarPx - 8, class: "bar-label", "text-anchor": "middle" });
-        lbl.textContent = d.scopePerDay.toFixed(3);
+      // the standout bursts get their number called out too
+      if (d.name === "bwv2" || d.name === "gear") {
+        const lbl = el("text", { x: (x1 + x2) / 2, y: yy - tallestBarPx / 2 - r - 8, class: "bar-label", "text-anchor": "middle" });
+        lbl.textContent = d.commitsPerDay.toFixed(2);
         g.appendChild(lbl);
       }
     });
@@ -738,9 +800,10 @@
     const LABEL_ROW_H = 12;
 
     data.slice().sort(function (a, b) { return a.dayStart - b.dayStart; }).forEach(function (d) {
-      const xAnchor = xP(d.scopePerDay);
+      const xAnchor = xP(d.commitsPerDay);
       const y1 = yP(d.dayStart), y2 = Math.max(yP(d.dayEnd), y1 + 2);
       const sw = thickness(d.commits);
+      const r = radius(d.loc);
 
       const g = el("g", { class: "bar" });
       svg.appendChild(g);
@@ -751,7 +814,16 @@
         "stroke-width": sw, "stroke-linecap": "round", opacity: "0.22",
       }));
 
-      // per-day bars, sqrt-scaled, extending rightward from the anchor
+      // circle = LOC at the end of this burst (time flows top-to-bottom
+      // here, so "end" is the bottom), drawn before the bars so they always
+      // paint on top and are never hidden by it.
+      g.appendChild(el("circle", {
+        cx: xAnchor, cy: y2, r: r, fill: d.color, opacity: "0.3",
+        stroke: d.color, "stroke-width": "1.5",
+      }));
+
+      // per-day bars, sqrt-scaled, centered on the anchor (not growing only
+      // rightward), same "centered around a line" treatment as landscape mode
       const info = computeBars(d, fullMinDay, fullMaxDay);
       const maxBarPxP = 26;
       if (info && info.bars.length) {
@@ -760,7 +832,7 @@
           const by1 = yP(b.bStart), by2 = yP(b.bEnd);
           const h = Math.max(0.6, by2 - by1 - Math.min(1, (by2 - by1) * 0.15));
           const w = info.peak > 0 ? Math.max(1.2, maxBarPxP * Math.sqrt(b.value / info.peak)) : 0;
-          g.appendChild(el("rect", { x: xAnchor, y: by1, width: w, height: h, fill: d.color }));
+          g.appendChild(el("rect", { x: xAnchor - w / 2, y: by1, width: w, height: h, fill: d.color }));
         });
       }
 
@@ -920,7 +992,7 @@
   const table = document.getElementById("dataTable");
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  ["Project", "Active window", "Days", "Commits", "LOC", "Commits/day", "LOC/day", "Scope (1–5)", "Scope/day", "AI-attributed"].forEach(function (h) {
+  ["Burst", "Project", "Active window", "Active days", "Commits", "Commits/day", "LOC (at burst end)", "LOC/day", "AI-attributed"].forEach(function (h) {
     const th = document.createElement("th");
     th.textContent = h;
     headRow.appendChild(th);
@@ -933,14 +1005,13 @@
     const tr = document.createElement("tr");
     const cells = [
       d.name,
+      d.project,
       d.start + " → " + d.end,
-      d.days,
+      d.activeDays,
       d.commits.toLocaleString(),
-      d.loc.toLocaleString(),
       d.commitsPerDay.toFixed(2),
+      d.loc.toLocaleString(),
       d.locPerDay.toFixed(1),
-      String(d.scope),
-      d.scopePerDay.toFixed(3),
       d.aiPct === null ? "not yet measured" : d.aiPct + "%",
     ];
     cells.forEach(function (c) {

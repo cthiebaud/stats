@@ -15,9 +15,19 @@ Computes, per project (group):
     files play the same "content, not code" role SVG already does elsewhere)
   - calendar start/end (YYYY-MM, from actual commit history)
 
-aiPct and scope are NOT computed here -- aiPct comes from ad hoc disclosure
-tool runs per group (see PROMPT.md), scope is Christophe's own subjective
-1-5 rating. Both are hand-entered into index.html's `data` array.
+aiPct is NOT computed here -- it comes from ad hoc disclosure tool runs per
+group (see PROMPT.md) and is hand-entered into index.html's `data` array.
+(The subjective 1-5 "scope" rating this docstring used to mention was
+dropped entirely once the chart moved from one row per project to one row
+per gap-clustered burst, 2026-10-15 -- see PROMPT.md. There's no sane
+per-burst equivalent of a whole-project scope rating.)
+
+This script's project-level rollups (summary.json) are NOT what the chart's
+`data` array is built from any more either -- that's now
+compute_bursts.py + compute_burst_loc.py, which split each project's
+history into bursts first. This script is kept for the coarser project-level
+view it still produces (and as the reference LOC/cloc-filter implementation
+the burst scripts import from).
 
 Run with: python3 scripts/gather_data.py
 """
