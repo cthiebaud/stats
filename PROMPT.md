@@ -43,31 +43,34 @@ exactly the story the chart exists to tell. The clearest example: `bwv`'s
 LOC) sit three years apart in the same repo. One blended "bwv" row showed
 neither story; two rows (`bwv1`, `bwv2`) show both.
 
-**Burst detection**: same 120-day gap-clustering rule `gather_data.py`'s
-`active_days()` already used (see below) — but instead of summing each
-cluster's span into one project-level total, **each cluster is now kept as
-its own chart row**. Implemented in `scripts/compute_bursts.py`. A cluster
-spanning exactly one calendar day (1–3 commits — a lone fix, not a coding
-campaign) is **dropped entirely**, not merged into a neighbor. This was
-checked against the real distribution, not an arbitrary cutoff: every
-current single-day cluster has 1–3 commits, and the smallest *kept*
-multi-day burst is 27.2 active days — a real gap, not a tuned threshold.
-Result: 14 projects → **22 bursts**.
+**Burst detection**: originally a single 120-day gap-clustering pass
+(`gather_data.py`'s `active_days()` rule, see below), **rewritten to two
+passes 2026-10-15** — see "Burst re-splitting and the productivity metric
+redesign" further down for why and how. Instead of summing each cluster's
+span into one project-level total, **each cluster is kept as its own chart
+row**. Implemented in `scripts/compute_bursts.py`. A cluster touching only
+one distinct working day (1–3 commits — a lone fix, not a coding campaign)
+is **dropped entirely**, not merged into a neighbor. Result: 14 projects →
+**27 bursts**.
 
-**Y-axis changed from scope/day to commits/day (per burst).** The old
-"scope" field (Christophe's subjective 1–5 whole-project feature-scope
-rating) has **no sane per-burst equivalent** — re-rating scope separately
-for a project's 2022 scaffold vs. its 2025 rewrite isn't a meaningful thing
-to ask of a human rater, and keeping one project-level scope value applied
-identically to every burst would just reintroduce the same
-hidden-the-real-story problem the whole redesign exists to fix. Christophe
-confirmed this explicitly (via AskUserQuestion) — scope is now **dropped
-from the chart entirely**, not computed anywhere, not fed from anywhere.
-**If asked "do we still need human estimation of feature complexity?" the
-answer is no — it's fully obsolete for this chart**, not just temporarily
-unused. (`scope` still appears as an ordinary English word in `repos.yaml`'s
-notes — e.g. "enough scope to count as a project" — that's unrelated, not a
-leftover reference to the old rating field.)
+**Y-axis changed from scope/day to commits/day, then to net lines/working-day
+(per burst).** The old "scope" field (Christophe's subjective 1–5
+whole-project feature-scope rating) has **no sane per-burst equivalent** —
+re-rating scope separately for a project's 2022 scaffold vs. its 2025
+rewrite isn't a meaningful thing to ask of a human rater, and keeping one
+project-level scope value applied identically to every burst would just
+reintroduce the same hidden-the-real-story problem the whole redesign
+exists to fix. Christophe confirmed this explicitly (via AskUserQuestion) —
+scope is now **dropped from the chart entirely**, not computed anywhere,
+not fed from anywhere. **If asked "do we still need human estimation of
+feature complexity?" the answer is no — it's fully obsolete for this
+chart**, not just temporarily unused. (`scope` still appears as an ordinary
+English word in `repos.yaml`'s notes — e.g. "enough scope to count as a
+project" — that's unrelated, not a leftover reference to the old rating
+field.) **Commits/day itself was superseded again, 2026-10-15** — see
+"Burst re-splitting and the productivity metric redesign" below; it's no
+longer the axis, though it's still shown as a reference column in Table
+view.
 
 **Each burst ends in a circle**, radius sqrt-scaled (area-proportional) to
 **LOC as of the end of that specific burst** — not current HEAD. Computed by
@@ -105,6 +108,86 @@ The same general fix also caught an analogous case in `music`
 been re-counting it too — 1,620→337 and 5,068→3,785 respectively). If a
 future burst's LOC/day looks implausible relative to its neighbors, this
 exact mechanism is the first thing to check.
+
+### Burst re-splitting and the productivity metric redesign (2026-10-15)
+
+Christophe pushed back hard on commits/day as a productivity axis: *"commit
+per day is by no means a measure of [productivity] whatsoever. I can write
+tons of code, be it futile or genius, and orthogonally choose to commit
+often or not."* Correct, and SPACE (the standard reference framework —
+Forsgren et al., GitHub/Microsoft Research, 2021) says the same thing:
+activity counts like commit frequency are the easiest metric to collect and
+the least trustworthy alone. This triggered two separable fixes, done
+together since both touch `compute_bursts.py`'s output:
+
+**1. Burst boundaries were wrong for any project with isolated "bridge"
+commits.** The single-pass 120-day gap clusterer only ever checks *adjacent*
+commits, so a lone commit sitting in otherwise-dead air can chain two
+genuinely separate episodes together as long as neither individual gap
+exceeds 120 days — discovered when Christophe asked why covid's commit
+history "looks gone" for H1 2020, which he specifically remembered as the
+real start. It wasn't gone: `covid`'s real shape is three episodes (June
+2020 start; the Dec 2020–Jan 2021 push; a May 2021 wrap-up) glued into one
+by a single isolated Oct-21 commit (85 days after the June cluster, 60
+before the December one) plus a 108-day near-miss gap before May — none of
+the individual gaps crossed 120 days, so nothing ever split. **Fix**: a
+second, finer pass (45 days) inside each coarse cluster, reabsorbing
+trivial (<2-day) fragments into their nearest substantial neighbor instead
+of letting them bridge two real episodes. Implemented in
+`scripts/compute_bursts.py`'s `split_cluster()`. Verified against every
+other multi-burst project at fine thresholds of 30/45/60 days — identical
+result across all three (robust, not tuned), zero regressions anywhere
+except `covid` (1→3) and `earthlydelights` (2→5, the same bridging flaw
+Christophe hadn't flagged but was equally present — four of
+earthlydelights' five bursts are tiny 3–9-commit episodes from 2017–2019
+that a single 120-day pass had wrongly fused into two).
+
+**2. `active_days` was silently the burst's calendar SPAN, not a count of
+days actually worked.** `active_days = (last_commit_epoch −
+first_commit_epoch) / 86400` counts idle gaps *inside* a burst as if they
+were working time — confirmed on `gear`: 18.6 span-days but only 11
+distinct days with a commit, a 59%-dense burst, which was deflating its
+rate relative to denser bursts for no principled reason. **Fix**:
+`active_days` is now the count of distinct calendar days with ≥1 commit.
+This is a correction to every existing per-day rate (commits/day
+included), not just new metrics — it changed `gear`'s commits/day from 3.1
+to 5.3, for example.
+
+**3. The axis itself changed from commits/day to net lines of code per
+working day.** Christophe's design: blend "lines added" with "rework
+discarded" into one number — not an arbitrary composite (SPACE's warning
+against blending unrelated dimensions doesn't apply here, since rework is a
+correction to the numerator, not a separate dimension). Realized as `added
+− deleted` (signed), cloc-filtered, summed per burst
+(`scripts/compute_burst_netloc.py`) — lines written then deleted again
+within the same burst cancel out automatically, with data the pipeline
+already collects (`commit_changes()` in `lines_changed_by_day.py` already
+parsed both components per commit; this just stops discarding the sign).
+Divided by the corrected `active_days` above. **Known limitation,
+deliberately accepted for v1**: this also nets out genuine deletions of
+code that *predates* the burst (real cleanup, not rework of this burst's
+own work) — distinguishing the two needs diff-hunk-level line provenance,
+not just numstat totals. Revisit if net-lines ever looks wrong on real
+data; don't preemptively build the expensive version.
+
+**A result worth remembering**: net lines/working-day does NOT cleanly
+separate AI-assisted from hand-coded bursts. The three bursts with
+disclosed Claude Code commit attribution (`mundial` 681/day, `bwv2`
+524/day, `gear` 493/day) sit in the upper tier of the whole 13-year
+history, but the single *highest* burst by this measure is `covid2` (Dec
+2020–Jan 2021, 740/day) — entirely hand-coded, predating any AI tool by
+years. Report this honestly if asked "did AI make Christophe more
+productive" — the data says the AI-heavy bursts are reliably high, not
+that they're uniquely highest. This is disclosed in the chart's own
+subtitle, not just here.
+
+Commits/day is **not removed** from the data — it's still a Table-view
+column, now correctly divided by working-days — it's just no longer the
+chart's primary axis. The old hardcoded "standout burst" number callout
+(previously `bwv2`/`gear` by name, tied to commits/day) was replaced with a
+dynamic one: whichever burst(s) hit the dataset's actual min/max
+net-lines/working-day get labeled, so it never goes stale the way the
+hardcoded version already had before this rewrite.
 
 **Color**: one hue per **project** (not per burst — see "Color assignment"
 below, same golden-angle method as before, now stepping through unique
@@ -209,14 +292,15 @@ repo is restored to its original ref — same checkout/restore pattern
 `compute_burst_loc.py` already used for historical LOC snapshots.
 
 Effect on the chart: `covid` now starts 2020-06-15 (was 2020-12-20,
-367 commits vs. 216); `ciaccona2` gained 16 commits (1,124 → 1,140);
-`music3`/`music4` and `gear` picked up smaller bumps from their own
-extra refs. Re-run order after any `extra_refs` change: `compute_bursts.py`
-→ `compute_burst_loc.py` → `lines_changed_by_day.py` →
-`merge_daily_series.py` → `compute_burst_aipct.py`, then regenerate
-`index.html`'s `data` array and `dailySeries` object from the resulting
-JSON files (no dedicated generator script exists yet — see "Open /
-unfinished work").
+367 commits vs. 216 — now split into `covid1`/`covid2`/`covid3`, see "Burst
+re-splitting" below); `ciaccona2` gained 16 commits (1,124 → 1,140);
+`music3`/`music4` and `gear` picked up smaller bumps from their own extra
+refs. **Full re-run order** (after any `extra_refs`, `repos.yaml`, or
+burst-clustering change): `compute_bursts.py` → `compute_burst_loc.py` →
+`lines_changed_by_day.py` → `merge_daily_series.py` →
+`compute_burst_aipct.py` → `compute_burst_netloc.py` →
+`generate_index_data.py` (this last step splices the first six scripts'
+JSON output directly into `index.html` — see "Open / unfinished work").
 
 ### LOC methodology
 
@@ -308,7 +392,7 @@ AI-attribution shows a visible step, rather than needing to approach 100%).
 
 Final 14: **parimagine, earthlydelights, covid, sangiosleague,
 sangiovannilipioni, ciaccona, bookshelves, aletheia, bwv, mundial, gear,
-music, klam, openmozart.** These 14 now split into **22 bursts** in the
+music, klam, openmozart.** These 14 now split into **27 bursts** in the
 current chart (see "The burst redesign" above) — e.g. `bwv` → `bwv1` +
 `bwv2`, `ciaccona` → `ciaccona1..4`. The full repo-to-group mapping,
 including every repo's `status` (`include`/`exclude`) and the reasoning
@@ -464,6 +548,22 @@ two **unrelated, pre-existing dangling DNS records** at the same registrar
 custom domain) — both removed by Christophe. Not part of this project's own
 scope, just surfaced as a side effect of the Pages-API cross-check above.
 
+## Parked idea: futile vs. genius activity (separate from productivity)
+
+Raised 2026-10-15, deliberately **not** pursued yet — needs deep thinking on
+its own, flagged here only so it isn't lost. Christophe's point: commit
+frequency says nothing about whether the work itself was valuable or futile
+(Gold-Plating/Yak-Shaving/Bikeshedding) vs. a genuine breakthrough — these
+are two orthogonal questions, not one axis. Productivity (see "Open /
+unfinished work" below) is tractable from git data; "was this activity
+futile or genius" is a much harder, more subjective question (it's about
+*intent and value*, not rate or volume) and explicitly deferred. If resumed:
+a `ciaccona1` burst (91 commits, 24.5 days, ~31 lines of cloc-counted
+change) is worth a first look — structurally the one burst in the dataset
+that most resembles fiddling rather than building, though it may just be a
+methodology artifact (score-file-heavy repo, most real content in
+cloc-excluded SVG/JSON).
+
 ## Open / unfinished work
 
 1. ~~Re-measure `aiPct` per burst, not per project.~~ **Done 2026-10-15** —
@@ -485,22 +585,34 @@ scope, just surfaced as a side effect of the Pages-API cross-check above.
    history to work from.
 4. ~~Hidden-branch history was being silently dropped (HEAD-only `git
    log`).~~ **Done 2026-10-15** — see "Hidden-branch scanning" above.
-5. ~~`parimagine`/`earthlydelights1`/`earthlydelights2` (2013-2019) ate a
-   third of the chart's horizontal space for 3 of 22 bursts.~~ **Done
-   2026-10-15** — Christophe's call ("interesting, but make the graph
-   poorly readable ... for little value"): excluded from the **chart only**
-   via a per-row `chart: false` flag in `index.html`'s `data` array, feeding
-   a derived `chartData` array that every chart-geometry calculation and
-   both `render()`/`renderPortrait()` read from. `data` itself (and Table
-   view, which reads it directly) is untouched — these three bursts are
-   still real, still in `repos.yaml`, still fully visible in Table view.
-   The chart's effective visible range now starts at `covid` (2020-06-15).
-   No generator script exists for `index.html`'s `data`/`dailySeries`
-   literals — they're assembled by hand (or an ad hoc one-off script) from
-   `scripts/bursts.json` + `burst_loc.json` + `burst_aipct.json` +
-   `project_daily_series.json` each time the pipeline is re-run; writing a
-   real generator would remove a recurring source of transcription risk if
-   this keeps happening.
+5. ~~`parimagine`/`earthlydelights` (2013-2019) ate a third of the chart's
+   horizontal space for little value.~~ **Done 2026-10-15** — Christophe's
+   call ("interesting, but make the graph poorly readable ... for little
+   value"): excluded from the **chart only** via a `chart: false` flag set
+   per-PROJECT (not per burst name — the two-pass clustering fix split
+   `earthlydelights` 2→5 bursts, so the flag is applied to the whole
+   project in the generator script, not hardcoded burst names) in
+   `index.html`'s `data` array, feeding a derived `chartData` array that
+   every chart-geometry calculation and both `render()`/`renderPortrait()`
+   read from. `data` itself (and Table view, which reads it directly) is
+   untouched — these six bursts are still real, still in `repos.yaml`,
+   still fully visible in Table view. The chart's effective visible range
+   now starts at `covid1` (2020-06-15).
+6. ~~Burst boundaries were wrong (covid, earthlydelights) and the axis was
+   commits/day, which isn't a productivity measure.~~ **Done 2026-10-15** —
+   see "Burst re-splitting and the productivity metric redesign" above.
+   ~~No generator script was committed for `index.html`'s
+   `data`/`dailySeries` literals.~~ **Done 2026-10-15** —
+   [scripts/generate_index_data.py](scripts/generate_index_data.py) now
+   reads `scripts/bursts.json` + `burst_loc.json` + `burst_netloc.json` +
+   `burst_aipct.json` + `project_daily_series.json` + `repos.yaml`'s `site`
+   field and splices both literals into `index.html` directly (verified
+   idempotent against the hand-assembled version it replaced). **Run this
+   as the last step of any pipeline re-run from now on**, instead of
+   hand-editing or writing another one-off scratchpad script.
+7. **The futile-vs-genius idea remains parked** — see "Parked idea" above,
+   unchanged by this round of work. The productivity axis (this section)
+   and that question are deliberately different things.
 
 ## Repo / environment notes
 

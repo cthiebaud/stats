@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 REPOS_YAML = ROOT / "repos.yaml"
 CLONES_DIR = ROOT / "clones"
 
-EXCLUDED_LANGS = {"SVG", "JSON", "YAML", "CSV"}
+ALLOWED_LANGS = {"JavaScript", "HTML", "CSS", "LESS", "SCSS", "Vuejs Component", "Java", "JSP", "Python"}
 NUMSTAT_RE = re.compile(r"^(\d+|-)\t(\d+|-)\t(.+)$")
 LANG_LINE_RE = re.compile(r"^(.+?)\s{2,}\(([^)]+)\)\s*$")
 
@@ -29,7 +29,7 @@ def cloc_allowed_tokens():
         if not m:
             continue
         lang, ext_list = m.group(1).strip(), m.group(2)
-        if lang in EXCLUDED_LANGS:
+        if lang not in ALLOWED_LANGS:
             continue
         for tok in ext_list.split(","):
             tokens.add(tok.strip().lower())

@@ -9,7 +9,7 @@ import yaml
 sys.path.insert(0, "scripts")
 from manual_excludes import MANUAL_EXCLUDES
 
-LOC_EXCLUDE_LANGS = "SVG,JSON,YAML,CSV,XML"
+ALLOWED_LANGS = "JavaScript,HTML,CSS,LESS,SCSS,Vuejs Component,Java,JSP,Python"
 
 
 def glob_to_regex(pattern):
@@ -24,7 +24,7 @@ for group in groups:
         owner, repo = entry["owner"], entry["repo"]
         key = f"{owner}/{repo}"
         path = Path("clones") / group["name"] / owner / repo
-        cmd = ["cloc", ".", f"--exclude-lang={LOC_EXCLUDE_LANGS}", "--by-file", "--json"]
+        cmd = ["cloc", ".", f"--include-lang={ALLOWED_LANGS}", "--by-file", "--json"]
         pats = MANUAL_EXCLUDES.get(key)
         if pats:
             cmd += ["--fullpath", "--not-match-f=(" + "|".join(glob_to_regex(p) for p in pats) + ")"]

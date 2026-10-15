@@ -48,7 +48,7 @@ CLONES_DIR = PROJECT_ROOT / "clones"
 sys.path.insert(0, str(ROOT))
 from manual_excludes import MANUAL_EXCLUDES  # noqa: E402
 
-LOC_EXCLUDE_LANGS = "SVG,JSON,YAML,CSV,XML"
+ALLOWED_LANGS = "JavaScript,HTML,CSS,LESS,SCSS,Vuejs Component,Java,JSP,Python"
 
 
 def glob_to_regex(pattern):
@@ -106,7 +106,7 @@ def loc_for(group):
     for entry in group["repos"]:
         owner, repo = entry["owner"], entry["repo"]
         path = CLONES_DIR / group["name"] / owner / repo
-        cmd = ["cloc", ".", f"--exclude-lang={LOC_EXCLUDE_LANGS}", "--json"]
+        cmd = ["cloc", ".", f"--include-lang={ALLOWED_LANGS}", "--json"]
         patterns = MANUAL_EXCLUDES.get(f"{owner}/{repo}")
         if patterns:
             cmd += ["--fullpath", "--not-match-f=" + "(" + "|".join(glob_to_regex(p) for p in patterns) + ")"]

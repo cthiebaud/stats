@@ -5,8 +5,8 @@
 For every repo in an `include` group of repos.yaml, walks full history via
 `git log --numstat`, sums added+deleted lines per commit restricted to files
 that would pass the same cloc filter used for the LOC methodology
-(--exclude-lang=SVG,JSON,YAML,CSV -- unambiguous by extension, so no need to
-shell out to cloc per commit), then buckets by calendar day (UTC).
+(--include-lang=JavaScript,HTML,CSS,... -- unambiguous by extension, so no
+need to shell out to cloc per commit), then buckets by calendar day (UTC).
 
 Run with: python3 scripts/lines_changed_by_day.py
 """
@@ -29,23 +29,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from manual_excludes import MANUAL_EXCLUDES  # noqa: E402
 from repo_refs import refs_for  # noqa: E402
 
-# XML added 2026-10-15: bwv543's MusicXML score files play the same "content,
-# not code" role SVG already plays for every other bwv/ciaccona repo -- same
-# exclusion principle, confirmed with Christophe. Also applied in
-# gather_data.py's cloc call, for consistency.
-EXCLUDED_LANGS = {"SVG", "JSON", "YAML", "CSV", "XML"}
+# Explicit allowlist (not a denylist), settled 2026-10-15 -- see
+# compute_burst_loc.py's ALLOWED_LANGS for the full rationale (same list,
+# kept in sync by hand since this file works from extensions, not cloc
+# itself). LESS/SCSS/Vuejs Component count as CSS/CSS/HTML+CSS+JS
+# equivalents respectively.
+ALLOWED_LANGS = {"JavaScript", "HTML", "CSS", "LESS", "SCSS", "Vuejs Component", "Java", "JSP", "Python"}
 
 NUMSTAT_RE = re.compile(r"^(\d+|-)\t(\d+|-)\t(.+)$")
 LANG_LINE_RE = re.compile(r"^(.+?)\s{2,}\(([^)]+)\)\s*$")
 
 
 def cloc_allowed_tokens():
-    """Build the set of filename/extension tokens cloc recognizes as code,
-    excluding the languages the LOC methodology already excludes. This is an
-    allowlist (not a 4-extension blocklist) so non-code files that git's
-    binary-detection heuristic fails to flag -- e.g. certain PDFs, which
-    diffed as 165k 'lines' in one real commit -- are correctly excluded, same
-    as cloc itself would exclude them (PDF isn't in cloc's language table)."""
+    """Build the set of filename/extension tokens for exactly the languages
+    the LOC methodology counts (ALLOWED_LANGS) -- an explicit allowlist, not
+    a denylist, so an unexpected language showing up in a future repo is
+    excluded by default rather than silently counted (confirmed this matters:
+    a PDF once diffed as 165k 'lines' in one real commit before LOC-counting
+    was switched off a blocklist entirely)."""
     out = subprocess.run(["cloc", "--show-lang"], capture_output=True, text=True).stdout
     tokens = set()
     for line in out.splitlines():
@@ -53,7 +54,7 @@ def cloc_allowed_tokens():
         if not m:
             continue
         lang, ext_list = m.group(1).strip(), m.group(2)
-        if lang in EXCLUDED_LANGS:
+        if lang not in ALLOWED_LANGS:
             continue
         for tok in ext_list.split(","):
             tokens.add(tok.strip().lower())
@@ -87,7 +88,12 @@ def day_of(epoch):
 
 
 def commit_changes(path, ref, allowed_tokens, manual_exclude_globs):
-    """{hash: (epoch, lines_changed)} for one ref's history, cloc-filtered."""
+    """{hash: (epoch, churn, net)} for one ref's history, cloc-filtered.
+    `churn` = added+deleted (raw movement, feeds the sparkline trail bars);
+    `net` = added-deleted (lines that actually entered or left the codebase,
+    feeds compute_burst_netloc.py's productivity metric -- added-then-
+    deleted-within-the-same-commit cancels out naturally, same principle
+    applied at burst scope in compute_burst_netloc.py)."""
     out = subprocess.run(
         ["git", "-C", str(path), "log", ref, "--format=COMMIT\t%H\t%at", "--numstat"],
         capture_output=True, text=True,
@@ -101,7 +107,7 @@ def commit_changes(path, ref, allowed_tokens, manual_exclude_globs):
             _, h, t = line.split("\t")
             current_hash = h
             current_epoch = int(t)
-            changes[current_hash] = (current_epoch, 0)
+            changes[current_hash] = (current_epoch, 0, 0)
             continue
         if not line.strip() or current_hash is None:
             continue
@@ -113,8 +119,8 @@ def commit_changes(path, ref, allowed_tokens, manual_exclude_globs):
             continue  # binary file, cloc wouldn't count it either
         if not is_counted(path_field, allowed_tokens, manual_exclude_globs):
             continue
-        epoch, total = changes[current_hash]
-        changes[current_hash] = (epoch, total + int(added) + int(deleted))
+        epoch, churn, net = changes[current_hash]
+        changes[current_hash] = (epoch, churn + int(added) + int(deleted), net + int(added) - int(deleted))
 
     return changes
 
@@ -127,8 +133,8 @@ def repo_daily_series(owner, repo, path, allowed_tokens, manual_exclude_globs):
         changes.update(commit_changes(path, ref, allowed_tokens, manual_exclude_globs))
 
     daily = defaultdict(int)
-    for epoch, lines in changes.values():
-        daily[day_of(epoch)] += lines
+    for epoch, churn, net in changes.values():
+        daily[day_of(epoch)] += churn
 
     return dict(sorted(daily.items()))
 

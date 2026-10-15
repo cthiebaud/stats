@@ -249,29 +249,35 @@ groups:
       was named differently. No action needed since it's excluded anyway.
 
   - name: athenaeum
-    status: exclude
+    status: include
+    site: null
     repos:
-      - {owner: athenaeum-brew, repo: password-validator-acceptance}
       - {owner: athenaeum-brew, repo: password-validator}
+      - {owner: athenaeum-brew, repo: password-validator-acceptance}
       - {owner: athenaeum-brew, repo: password-validator-impl}
-      - {owner: athenaeum-brew, repo: making-of}
-      - {owner: athenaeum-brew, repo: einfuehrung}
       - {owner: athenaeum-brew, repo: questioneer}
-      - {owner: athenaeum-brew, repo: maven-repo}
-      - {owner: athenaeum-brew, repo: concurrent-examples}
-      - {owner: athenaeum-brew, repo: webapp-examples}
-      - {owner: athenaeum-brew, repo: javafx-examples}
-      - {owner: athenaeum-brew, repo: javafx-webview-example}
-      - {owner: athenaeum-brew, repo: yaml-example}
-      - {owner: athenaeum-brew, repo: console-example}
-      - {owner: athenaeum-brew, repo: oop-example}
-      - {owner: athenaeum-brew, repo: generics-example}
       - {owner: cthiebaud, repo: mythos}
-      - {owner: cthiebaud, repo: repository}
     note: >
-      Side project done on a professional course, not hobby (per PROMPT.md).
-      This resolves the whole athenaeum-brew org in one shot, plus mythos and
-      repository (personal scratch repos tied to the same course work).
+      Re-added 2026-10-15, reversing the earlier "professional course, not
+      hobby" exclusion -- Christophe's direct call. Scoped to 5 of the
+      original 17 repos: the password-validator trio (impl + its own tests
+      + acceptance tests), questioneer (site now dead -- see Deployment
+      notes, dangling DNS already removed), and mythos (owned by cthiebaud,
+      not athenaeum-brew, but confirmed part of the same course effort).
+      The other 12 athenaeum-brew repos (making-of, einfuehrung, maven-repo,
+      concurrent-examples, webapp-examples, javafx-examples,
+      javafx-webview-example, yaml-example, console-example, oop-example,
+      generics-example) and cthiebaud/repository are deliberately left out
+      -- generic course-exercise scaffolding, not this specific effort.
+      A sixth candidate, "model", turned out to be a small local-only subset
+      of mythos never pushed to git (same unreachable-local-copy situation
+      as "hat") -- correctly has no git history to compute from, ignored.
+      Language scope note: this is the first Java-heavy project in the
+      chart -- the LOC/netLoc pipeline counts whatever cloc recognizes
+      (JS/HTML/CSS/Java/Python/etc., minus content formats), not a
+      JS-specific allowlist, so Java is included like any other real
+      language once manual_excludes.py is checked for vendored dependencies
+      (Maven projects commonly commit vendored jars/libs).
 
   # -------------------------------------------------------------------- tbd
   # Personal forks of 3rd-party code -- almost certainly not Christophe's own

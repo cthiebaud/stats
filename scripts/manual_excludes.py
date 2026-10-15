@@ -85,4 +85,7 @@ MANUAL_EXCLUDES = {
     "cthiebaud/openmozart.net": [
         "static/js/close-pixelate.js",  # vendored, header credits "Developed by David DeSandro"
     ],
+    "born-in-plays-for/mundial": [
+        "css/bootstrap-custom.min.css",  # vendored Bootstrap v5.3.3 build, MIT-licensed header confirms it
+    ],
 }

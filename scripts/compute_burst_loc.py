@@ -31,7 +31,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from manual_excludes import MANUAL_EXCLUDES  # noqa: E402
 from repo_refs import refs_for  # noqa: E402
 
-LOC_EXCLUDE_LANGS = "SVG,JSON,YAML,CSV,XML"
+# Explicit allowlist (not a denylist), settled 2026-10-15 after the project's
+# scope grew from "browser-site JS" to include athenaeum's Java/JSP and
+# gear's Python tooling: count only real hand-authored application code,
+# ignore everything else -- docs, data/config formats, build tooling, CI
+# scripts, generated output. LESS/SCSS/Vuejs Component are included as
+# equivalents of CSS/CSS/HTML+CSS+JS respectively (cloc gives them their own
+# language name by file extension, but a .vue file IS html+js+css in one
+# file, and .less/.scss ARE css, just preprocessed -- excluding them on a
+# naming technicality would have gutted sangiovannilipioni, sangiosleague,
+# and openmozart, which are substantially Vue-based).
+ALLOWED_LANGS = "JavaScript,HTML,CSS,LESS,SCSS,Vuejs Component,Java,JSP,Python"
 
 
 def glob_to_regex(pattern):
@@ -78,7 +88,7 @@ def current_ref(path):
 
 
 def cloc_at(path, owner_repo):
-    cmd = ["cloc", ".", f"--exclude-lang={LOC_EXCLUDE_LANGS}", "--json"]
+    cmd = ["cloc", ".", f"--include-lang={ALLOWED_LANGS}", "--json"]
     patterns = MANUAL_EXCLUDES.get(owner_repo)
     if patterns:
         cmd += ["--fullpath", "--not-match-f=" + "(" + "|".join(glob_to_regex(p) for p in patterns) + ")"]

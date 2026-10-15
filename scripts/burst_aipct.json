@@ -2,7 +2,12 @@
   "parimagine": 0.0,
   "earthlydelights1": 0.0,
   "earthlydelights2": 0.0,
-  "covid": 0.0,
+  "earthlydelights3": 0.0,
+  "earthlydelights4": 0.0,
+  "earthlydelights5": 0.0,
+  "covid1": 0.0,
+  "covid2": 0.0,
+  "covid3": 0.0,
   "sangiosleague": 0.0,
   "sangiovannilipioni": 0.0,
   "ciaccona1": 0.0,
@@ -20,5 +25,7 @@
   "music1": 0.0,
   "music2": 0.0,
   "music3": 0.0,
-  "music4": 1.4
+  "music4": 1.4,
+  "athenaeum1": 0.0,
+  "athenaeum2": 0.0
 }

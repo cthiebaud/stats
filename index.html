@@ -215,20 +215,29 @@
       <summary>About this chart</summary>
       <p class="subtitle">
         Across 14 personal hobby projects (professional/course work and tiny ones excluded), each gap-clustered
-        burst of real activity &mdash; not each whole project &mdash; is its own row (a 120-day idle gap splits
-        one; a single-day blip of 1&ndash;3 commits is dropped as noise, not drawn). Commits/day jumps roughly
-        2&ndash;4&times; exactly where Claude Code <em>agentic</em> commit attribution appears (bwv2, mundial,
-        gear) &mdash; most visibly in bwv, where a tiny 2022 scaffold (bwv1, 23 commits, 22 LOC, 0% AI-attributed)
-        and a 2025 rewrite (bwv2, 662 commits, 13,026 LOC) sit three years apart in the same repo but are, in
-        every way that matters here, two different projects.
+        burst of real activity &mdash; not each whole project &mdash; is its own row (commit history is
+        clustered at two gap thresholds, 120 days then 45, so a few isolated bridge commits can't glue two
+        genuinely separate episodes into one; a cluster touching only one working day is dropped as noise, not
+        drawn). The y-axis is net new lines of code per working day &mdash; added minus deleted, so rework
+        within the same burst cancels out, divided by the number of distinct days actually worked, not commit
+        frequency, which is a workflow habit orthogonal to output. The three bursts with disclosed Claude Code
+        <em>agentic</em> commit attribution (mundial 681/day, bwv2 524/day, gear 493/day) sit in the upper tier
+        of this whole 13-year history &mdash; but don't own the top spot: the single highest burst by this
+        measure is <strong>covid2</strong> (Dec 2020&ndash;Jan 2021, 740/day), entirely hand-coded, predating
+        any AI tool. Most visibly in bwv, where a tiny 2022 scaffold (bwv1, 23 commits, 4 net lines/day, 0%
+        AI-attributed) and a 2025 rewrite (bwv2, 662 commits, 524 net lines/day) sit three years apart in the
+        same repo but are, in every way that matters here, two different projects.
       </p>
       <div class="legend" id="legend"></div>
       <div class="foot">
-        <strong>Reading this honestly:</strong> a burst's LOC is NOT a current snapshot &mdash; it's that
-        project's LOC (cloc, excluding SVG/JSON/YAML/CSV/XML, plus manually-excluded vendor libraries and
-        generated/data-dump files) as of the end of that specific burst, computed by checking out each
-        contributing repo's last commit at or before the burst's end date. AI-attribution % is measured per
-        burst (each burst's own commit range, not a project-wide blend) with
+        <strong>Reading this honestly:</strong> net lines/day is a proxy for "output that stuck within the
+        burst," not value &mdash; it also nets out genuine cleanup of code that predates the burst (not just
+        same-burst rework), and lines of code is a weak stand-in for what actually mattered, a limitation no
+        git-only metric fixes. A burst's LOC circle is NOT a current snapshot &mdash; it's that project's LOC
+        (cloc, excluding SVG/JSON/YAML/CSV/XML, plus manually-excluded vendor libraries and generated/data-dump
+        files) as of the end of that specific burst, computed by checking out each contributing repo's last
+        commit at or before the burst's end date. AI-attribution % is measured per burst (each burst's own
+        commit range, not a project-wide blend) with
         <a href="https://github.com/chaoss/disclosure" target="_blank" rel="noopener">chaoss/disclosure</a>
         (committer emails, co-author trailers, tool mentions for Claude Code, Cursor, Copilot, ChatGPT, Aider)
         &mdash; it only catches disclosed, git-level traces, so chat-based AI use with no trailer or tool
@@ -248,7 +257,7 @@
     <p class="zoomhint" id="zoomhint">Scroll to zoom, drag to pan, double-click to reset — bars resolve into daily rhythm as you zoom in.</p>
 
     <div id="chartWrap">
-      <svg id="chart" viewBox="0 0 1320 420" role="img" aria-label="Timeline of coding bursts, 2013 to 2026, each positioned by its own actual start and end dates, drawn as zoomable per-day activity bars centered on a commits-per-day line that ends in a circle sized by LOC at the end of the burst"></svg>
+      <svg id="chart" viewBox="0 0 1320 420" role="img" aria-label="Timeline of coding bursts, 2013 to 2026, each positioned by its own actual start and end dates, drawn as zoomable per-day activity bars centered on a net-lines-of-code-per-working-day line that ends in a circle sized by LOC at the end of the burst"></svg>
     </div>
 
     <div id="tableWrap" style="display:none;">
@@ -264,48 +273,83 @@
   "use strict";
 
   // Rebuilt 2026-10-15 as bursts, not whole projects: a project's commit
-  // history is split into gap-clustered episodes (120-day threshold, same
-  // rule gather_data.py always used for "active days" -- see
-  // scripts/compute_bursts.py), and each episode -- not each project -- is
+  // history is split into gap-clustered episodes -- see
+  // scripts/compute_bursts.py -- and each episode -- not each project -- is
   // its own row. bwv's 2022 scaffold and its 2025 rewrite share a repo but
   // are, in every way that matters here, two different projects three years
   // apart; a single "bwv" row averaged across that gap was hiding exactly
-  // the story this chart exists to tell. Bursts spanning a single calendar
-  // day (1-3 commits -- a lone fix, not a coding campaign) are dropped
-  // entirely, confirmed against the real distribution: the smallest *kept*
-  // burst spans 27.2 days, so this wasn't a tuned cutoff. `loc` is NOT a
-  // current snapshot -- it's that project's LOC as of the END of this
-  // specific burst (checkout each contributing repo's last commit at or
-  // before the burst's end date, cloc it, sum -- scripts/compute_burst_loc.py),
-  // so bwv1's 22 and bwv2's 13,026 are genuinely different points in time,
-  // not one blended total. aiPct IS measured per burst (each burst's own
-  // commit range via `disclosure scan`, not a project-wide blend --
+  // the story this chart exists to tell.
+  //
+  // Burst boundaries use TWO clustering passes (120-day coarse, then 45-day
+  // fine within each coarse cluster), added the same day after covid's real
+  // history exposed a gap in the single-pass rule: a pairwise-gap clusterer
+  // only checks ADJACENT commits, so a few isolated "bridge" commits -- each
+  // individually under 120 days from its neighbor, but together spanning
+  // most of a year of dead air -- chained covid's real June 2020 start,
+  // December 2020 push, and May 2021 wrap-up into one misleadingly
+  // continuous burst (confirmed against Christophe's own memory of a
+  // separate early-2020 episode). Fixed by re-clustering each coarse
+  // cluster's distinct working days at the finer threshold and reabsorbing
+  // trivial (<2-day) fragments into their nearest substantial neighbor
+  // instead of letting them bridge two real episodes. A cluster touching
+  // only one working day is dropped entirely as noise, not drawn.
+  //
+  // `loc` is NOT a current snapshot -- it's that project's LOC as of the END
+  // of this specific burst (checkout each contributing repo's last commit at
+  // or before the burst's end date, cloc it, sum --
+  // scripts/compute_burst_loc.py), so bwv1's 22 and bwv2's 13,026 are
+  // genuinely different points in time, not one blended total.
+  //
+  // `activeDays` is the count of distinct calendar days with >=1 commit, NOT
+  // the burst's calendar span (end-start) -- changed the same day, since the
+  // span silently counted idle gaps *inside* a burst as working time,
+  // diluting the rate for any sparse burst (gear: 18.6 span-days but only 11
+  // distinct days actually committed to, a 59%-dense burst).
+  //
+  // `netLoc` (added-deleted, cloc-filtered, summed per burst --
+  // scripts/compute_burst_netloc.py) / `activeDays` is the chart's primary
+  // y-axis, replacing commits/day entirely: commit frequency is a workflow
+  // habit orthogonal to output, not a productivity measure, and raw added+
+  // deleted churn double-counts a line that was written then rewritten
+  // within the same burst as two units of "work" instead of one. Net lines
+  // can be negative (a burst that was net cleanup, not net addition -- e.g.
+  // music3, earthlydelights5).
+  //
+  // aiPct IS measured per burst (each burst's own commit range via
+  // `disclosure scan`, not a project-wide blend --
   // scripts/compute_burst_aipct.py) -- confirmed this matters: bwv1 (2022,
   // predates Claude Code) is 0%, not the old blended-project 3.4% that
   // bwv2 alone earns.
   const data = [
-    { name: "parimagine", project: "parimagine", start: "2013-04-28", end: "2013-11-25", commits: 173, activeDays: 210.6, loc: 3261, aiPct: 0.0, site: "https://dev.parimagine.fr", chart: false },
-    { name: "earthlydelights1", project: "earthlydelights", start: "2016-01-16", end: "2016-09-01", commits: 208, activeDays: 228.6, loc: 3060, aiPct: 0.0, site: null, chart: false },
-    { name: "earthlydelights2", project: "earthlydelights", start: "2017-01-21", end: "2019-04-12", commits: 27, activeDays: 810.7, loc: 3115, aiPct: 0.0, site: null, chart: false },
-    { name: "covid", project: "covid", start: "2020-06-15", end: "2021-05-13", commits: 367, activeDays: 332.8, loc: 11994, aiPct: 0.0, site: null },
-    { name: "music1", project: "music", start: "2021-02-04", end: "2021-05-06", commits: 62, activeDays: 90.8, loc: 1278, aiPct: 0.0, site: "https://music.cthiebaud.com" },
-    { name: "sangiosleague", project: "sangiosleague", start: "2021-07-20", end: "2021-09-22", commits: 242, activeDays: 63.4, loc: 1352, aiPct: 0.0, site: null },
-    { name: "sangiovannilipioni", project: "sangiovannilipioni", start: "2021-08-09", end: "2021-12-23", commits: 135, activeDays: 136.1, loc: 4810, aiPct: 0.0, site: null },
-    { name: "klam", project: "klam", start: "2021-09-14", end: "2021-11-09", commits: 41, activeDays: 56.2, loc: 573, aiPct: 0.0, site: "https://klam.cthiebaud.com" },
-    { name: "openmozart", project: "openmozart", start: "2021-09-18", end: "2021-10-09", commits: 263, activeDays: 21.2, loc: 1151, aiPct: 0.0, site: "https://openmozart.cthiebaud.com" },
-    { name: "ciaccona1", project: "ciaccona", start: "2021-11-28", end: "2021-12-22", commits: 91, activeDays: 24.5, loc: 20, aiPct: 0.0, site: "https://ciaccona.cthiebaud.com" },
-    { name: "bwv1", project: "bwv", start: "2022-04-01", end: "2022-05-06", commits: 23, activeDays: 35.0, loc: 22, aiPct: 0.0, site: "https://bwv.cthiebaud.com" },
-    { name: "ciaccona2", project: "ciaccona", start: "2023-03-16", end: "2023-07-09", commits: 1140, activeDays: 114.9, loc: 20622, aiPct: 0.6, site: "https://ciaccona.cthiebaud.com" },
-    { name: "bookshelves", project: "bookshelves", start: "2023-10-22", end: "2024-02-23", commits: 495, activeDays: 123.8, loc: 4307, aiPct: 0.8, site: "https://bookshelves.cthiebaud.com" },
-    { name: "ciaccona3", project: "ciaccona", start: "2023-12-11", end: "2024-01-07", commits: 38, activeDays: 27.2, loc: 11941, aiPct: 0.0, site: "https://ciaccona.cthiebaud.com" },
-    { name: "aletheia", project: "aletheia", start: "2024-01-01", end: "2024-04-15", commits: 647, activeDays: 105.0, loc: 5825, aiPct: 0.2, site: "https://aletheia.cthiebaud.com" },
-    { name: "music2", project: "music", start: "2024-01-13", end: "2024-02-16", commits: 130, activeDays: 34.1, loc: 2996, aiPct: 0.0, site: "https://music.cthiebaud.com" },
-    { name: "music3", project: "music", start: "2024-11-12", end: "2025-07-19", commits: 19, activeDays: 249.0, loc: 2964, aiPct: 0.0, site: "https://music.cthiebaud.com" },
-    { name: "ciaccona4", project: "ciaccona", start: "2024-12-08", end: "2025-02-24", commits: 24, activeDays: 78.1, loc: 11543, aiPct: 0.0, site: "https://ciaccona.cthiebaud.com" },
-    { name: "bwv2", project: "bwv", start: "2025-05-19", end: "2025-07-12", commits: 662, activeDays: 53.7, loc: 13026, aiPct: 1.7, site: "https://bwv.cthiebaud.com" },
-    { name: "mundial", project: "mundial", start: "2026-06-05", end: "2026-07-27", commits: 1358, activeDays: 52.3, loc: 24950, aiPct: 61.2, site: "https://mundial.cthiebaud.com" },
-    { name: "gear", project: "gear", start: "2026-08-24", end: "2026-09-12", commits: 58, activeDays: 18.6, loc: 3065, aiPct: 67.2, site: "https://gear.cthiebaud.com" },
-    { name: "music4", project: "music", start: "2026-09-23", end: "2026-10-13", commits: 73, activeDays: 20.0, loc: 6421, aiPct: 1.4, site: "https://music.cthiebaud.com" },
+    { name: "parimagine", project: "parimagine", start: "2013-04-28", end: "2013-11-25", commits: 173, activeDays: 28, loc: 2855, netLoc: 3787, aiPct: 0.0, site: "https://dev.parimagine.fr", chart: false },
+    { name: "earthlydelights1", project: "earthlydelights", start: "2016-01-16", end: "2016-09-01", commits: 208, activeDays: 32, loc: 2453, netLoc: 3398, aiPct: 0.0, site: null, chart: false },
+    { name: "earthlydelights2", project: "earthlydelights", start: "2017-01-21", end: "2017-06-14", commits: 3, activeDays: 3, loc: 1854, netLoc: 0, aiPct: 0.0, site: null, chart: false },
+    { name: "earthlydelights3", project: "earthlydelights", start: "2017-08-23", end: "2018-03-03", commits: 9, activeDays: 5, loc: 2453, netLoc: 109, aiPct: 0.0, site: null, chart: false },
+    { name: "earthlydelights4", project: "earthlydelights", start: "2018-05-03", end: "2018-09-27", commits: 7, activeDays: 5, loc: 2453, netLoc: 0, aiPct: 0.0, site: null, chart: false },
+    { name: "earthlydelights5", project: "earthlydelights", start: "2018-12-19", end: "2019-04-12", commits: 8, activeDays: 3, loc: 1858, netLoc: -81, aiPct: 0.0, site: null, chart: false },
+    { name: "covid1", project: "covid", start: "2020-06-15", end: "2020-07-28", commits: 141, activeDays: 13, loc: 4693, netLoc: 5763, aiPct: 0.0, site: null },
+    { name: "covid2", project: "covid", start: "2020-10-21", end: "2021-01-18", commits: 212, activeDays: 19, loc: 10872, netLoc: 13546, aiPct: 0.0, site: null },
+    { name: "music1", project: "music", start: "2021-02-04", end: "2021-05-06", commits: 62, activeDays: 17, loc: 1228, netLoc: 1528, aiPct: 0.0, site: "https://music.cthiebaud.com" },
+    { name: "covid3", project: "covid", start: "2021-05-06", end: "2021-05-13", commits: 14, activeDays: 5, loc: 10988, netLoc: 277, aiPct: 0.0, site: null },
+    { name: "sangiosleague", project: "sangiosleague", start: "2021-07-20", end: "2021-09-22", commits: 242, activeDays: 37, loc: 1244, netLoc: 1442, aiPct: 0.0, site: null },
+    { name: "sangiovannilipioni", project: "sangiovannilipioni", start: "2021-08-09", end: "2021-12-23", commits: 135, activeDays: 24, loc: 3892, netLoc: 5139, aiPct: 0.0, site: null },
+    { name: "klam", project: "klam", start: "2021-09-14", end: "2021-11-09", commits: 41, activeDays: 8, loc: 558, netLoc: 655, aiPct: 0.0, site: "https://klam.cthiebaud.com" },
+    { name: "openmozart", project: "openmozart", start: "2021-09-18", end: "2021-10-09", commits: 263, activeDays: 12, loc: 1082, netLoc: 1402, aiPct: 0.0, site: "https://openmozart.cthiebaud.com" },
+    { name: "ciaccona1", project: "ciaccona", start: "2021-11-28", end: "2021-12-22", commits: 91, activeDays: 8, loc: 17, netLoc: 20, aiPct: 0.0, site: "https://ciaccona.cthiebaud.com" },
+    { name: "bwv1", project: "bwv", start: "2022-04-01", end: "2022-05-06", commits: 23, activeDays: 7, loc: 14, netLoc: 15, aiPct: 0.0, site: "https://bwv.cthiebaud.com" },
+    { name: "ciaccona2", project: "ciaccona", start: "2023-03-16", end: "2023-07-09", commits: 1140, activeDays: 93, loc: 20197, netLoc: 27323, aiPct: 0.6, site: "https://ciaccona.cthiebaud.com" },
+    { name: "bookshelves", project: "bookshelves", start: "2023-10-22", end: "2024-02-23", commits: 495, activeDays: 50, loc: 4087, netLoc: 5507, aiPct: 0.8, site: "https://bookshelves.cthiebaud.com" },
+    { name: "ciaccona3", project: "ciaccona", start: "2023-12-11", end: "2024-01-07", commits: 38, activeDays: 6, loc: 11675, netLoc: 362, aiPct: 0.0, site: "https://ciaccona.cthiebaud.com" },
+    { name: "aletheia", project: "aletheia", start: "2024-01-01", end: "2024-04-15", commits: 647, activeDays: 62, loc: 5231, netLoc: 6488, aiPct: 0.2, site: "https://aletheia.cthiebaud.com" },
+    { name: "music2", project: "music", start: "2024-01-13", end: "2024-02-16", commits: 130, activeDays: 9, loc: 2730, netLoc: 1973, aiPct: 0.0, site: "https://music.cthiebaud.com" },
+    { name: "athenaeum1", project: "athenaeum", start: "2024-04-13", end: "2024-06-01", commits: 91, activeDays: 18, loc: 1299, netLoc: 1743, aiPct: 0.0, site: null },
+    { name: "athenaeum2", project: "athenaeum", start: "2024-10-14", end: "2025-04-07", commits: 207, activeDays: 28, loc: 2316, netLoc: 1926, aiPct: 0.0, site: null },
+    { name: "music3", project: "music", start: "2024-11-12", end: "2025-07-19", commits: 19, activeDays: 5, loc: 2677, netLoc: -138, aiPct: 0.0, site: "https://music.cthiebaud.com" },
+    { name: "ciaccona4", project: "ciaccona", start: "2024-12-08", end: "2025-02-24", commits: 24, activeDays: 4, loc: 11280, netLoc: 438, aiPct: 0.0, site: "https://ciaccona.cthiebaud.com" },
+    { name: "bwv2", project: "bwv", start: "2025-05-19", end: "2025-07-12", commits: 662, activeDays: 39, loc: 11867, netLoc: 18951, aiPct: 1.7, site: "https://bwv.cthiebaud.com" },
+    { name: "mundial", project: "mundial", start: "2026-06-05", end: "2026-07-27", commits: 1358, activeDays: 53, loc: 19365, netLoc: 28211, aiPct: 61.2, site: "https://mundial.cthiebaud.com" },
+    { name: "gear", project: "gear", start: "2026-08-24", end: "2026-09-12", commits: 58, activeDays: 11, loc: 3048, netLoc: 5402, aiPct: 67.2, site: "https://gear.cthiebaud.com" },
+    { name: "music4", project: "music", start: "2026-09-23", end: "2026-10-13", commits: 73, activeDays: 16, loc: 4507, netLoc: 2031, aiPct: 1.4, site: "https://music.cthiebaud.com" },
   ];
 
   // Per-day lines-changed (added+deleted) for cloc-passing files, merged
@@ -313,11 +357,21 @@
   // sibling scripts (lines_changed_by_day.py, merge_daily_series.py) for the
   // full methodology (cloc-allowlist filter + manual vendor/data-dump
   // excludes). Feeds the per-day sparkline bars below.
-  const dailySeries = {"parimagine":{"2013-04-28":872,"2013-05-19":958,"2013-05-20":3157.0,"2013-05-21":868,"2013-05-22":946,"2013-05-23":795,"2013-05-24":3157.0,"2013-05-25":10,"2013-05-26":331,"2013-05-27":652,"2013-05-28":1671,"2013-05-29":6,"2013-06-08":1290,"2013-06-12":56,"2013-06-21":11,"2013-06-24":494,"2013-06-25":283,"2013-06-27":344,"2013-06-28":280,"2013-06-29":656,"2013-07-01":91,"2013-07-29":293,"2013-09-10":114,"2013-09-27":2,"2013-10-28":88,"2013-11-01":55,"2013-11-24":3157.0,"2013-11-25":210,"2018-04-25":185},"earthlydelights":{"2016-01-16":138,"2016-01-17":612.5,"2016-01-18":384,"2016-01-19":320,"2016-01-20":87,"2016-01-23":10,"2016-01-24":59,"2016-01-29":612.5,"2016-02-01":26,"2016-02-02":167,"2016-02-03":612.5,"2016-02-04":596,"2016-02-05":565,"2016-02-06":69,"2016-02-07":35,"2016-02-09":612.5,"2016-02-10":100,"2016-02-11":150,"2016-02-12":489,"2016-02-13":586,"2016-02-17":10,"2016-02-21":66,"2016-02-26":146,"2016-03-10":161,"2016-04-11":0,"2016-04-21":10,"2016-05-29":4,"2016-06-21":12,"2016-06-25":106,"2016-06-28":4,"2016-07-14":8,"2016-09-01":0,"2017-01-21":4,"2017-05-03":28,"2017-06-14":4,"2017-08-23":14,"2017-09-25":5,"2017-10-04":38,"2018-01-05":4,"2018-03-03":279,"2018-05-03":0,"2018-08-08":200,"2018-08-09":4,"2018-08-30":2,"2018-09-27":186,"2018-12-19":4,"2019-01-23":108,"2019-04-12":612.5},"covid":{"2020-06-15":401,"2020-06-18":2878.6,"2020-06-19":833,"2020-06-20":294,"2020-06-21":1254,"2020-06-22":682,"2020-06-23":487,"2020-06-24":45,"2020-06-25":631,"2020-06-26":65,"2020-06-27":103,"2020-07-26":18,"2020-07-28":82,"2020-10-21":18,"2020-12-20":2878.6,"2020-12-21":1828,"2020-12-22":2878.6,"2020-12-23":2878.6,"2020-12-24":150,"2020-12-25":2764,"2020-12-26":2008,"2020-12-27":2756,"2020-12-28":2140,"2020-12-29":2258,"2020-12-30":50,"2020-12-31":864,"2021-01-01":1108,"2021-01-02":287,"2021-01-03":202,"2021-01-04":0,"2021-01-15":71,"2021-01-18":12,"2021-05-06":35,"2021-05-07":1028,"2021-05-08":1442,"2021-05-09":37,"2021-05-13":3,"2021-09-14":0},"sangiosleague":{"2021-07-20":248,"2021-07-21":132,"2021-07-22":120,"2021-07-23":375.2,"2021-07-24":4,"2021-07-25":158,"2021-07-26":316,"2021-07-27":375.2,"2021-07-28":375.2,"2021-07-29":375.2,"2021-07-30":21,"2021-08-01":151,"2021-08-02":0,"2021-08-04":0,"2021-08-05":6,"2021-08-10":88,"2021-08-11":90,"2021-08-12":0,"2021-08-17":0,"2021-08-18":0,"2021-08-20":0,"2021-08-25":0,"2021-08-30":0,"2021-08-31":0,"2021-09-02":10,"2021-09-03":0,"2021-09-05":0,"2021-09-06":0,"2021-09-08":0,"2021-09-10":0,"2021-09-11":218,"2021-09-14":0,"2021-09-15":0,"2021-09-17":0,"2021-09-20":0,"2021-09-21":0,"2021-09-22":0},"sangiovannilipioni":{"2021-08-09":541.0,"2021-08-10":112,"2021-08-11":436,"2021-08-19":20,"2021-08-20":2,"2021-08-21":3,"2021-08-25":15,"2021-08-26":371,"2021-08-31":0,"2021-09-02":4,"2021-09-03":3,"2021-09-04":146,"2021-09-05":7,"2021-09-07":0,"2021-09-08":541.0,"2021-09-09":541.0,"2021-09-10":300,"2021-09-11":183,"2021-09-13":0,"2021-09-14":0,"2021-09-17":0,"2021-09-20":0,"2021-09-22":0,"2021-12-23":7,"2022-04-29":0},"ciaccona":{"2021-11-28":2,"2021-12-10":0,"2021-12-12":9,"2021-12-13":0,"2021-12-18":0,"2021-12-19":0,"2021-12-20":0,"2021-12-22":20,"2022-09-27":0,"2023-03-16":11,"2023-03-17":67,"2023-03-18":1132,"2023-03-19":599,"2023-03-20":197,"2023-03-21":144,"2023-03-22":781,"2023-03-23":286,"2023-03-24":230,"2023-03-25":472,"2023-03-26":200,"2023-03-27":271,"2023-03-28":2057.1,"2023-03-29":709,"2023-03-30":952,"2023-03-31":1786,"2023-04-01":2057.1,"2023-04-02":556,"2023-04-03":770,"2023-04-04":2057.1,"2023-04-05":1074,"2023-04-06":310,"2023-04-07":2004,"2023-04-08":660,"2023-04-09":1164,"2023-04-10":1631,"2023-04-11":477,"2023-04-12":545,"2023-04-13":684,"2023-04-14":604,"2023-04-15":408,"2023-04-16":564,"2023-04-17":460,"2023-04-18":697,"2023-04-19":894,"2023-04-20":1120,"2023-04-21":911,"2023-04-22":549,"2023-04-23":1876,"2023-04-24":887,"2023-04-25":1401,"2023-04-26":1899,"2023-04-27":446,"2023-04-28":480,"2023-04-29":1308,"2023-04-30":0,"2023-05-01":2057.1,"2023-05-02":1492,"2023-05-03":321,"2023-05-04":377,"2023-05-05":2057.1,"2023-05-06":527,"2023-05-07":761,"2023-05-08":531,"2023-05-09":2057.1,"2023-05-10":2057.1,"2023-05-11":2057.1,"2023-05-12":1038,"2023-05-13":45,"2023-05-15":2,"2023-05-16":1796,"2023-05-17":1030,"2023-05-18":464,"2023-05-19":2057.1,"2023-05-20":1839,"2023-05-21":2057.1,"2023-05-22":2057.1,"2023-05-23":2057.1,"2023-05-24":1614,"2023-05-25":87,"2023-05-26":775,"2023-05-27":22,"2023-05-28":1729,"2023-05-29":620,"2023-05-30":434,"2023-05-31":275,"2023-06-01":1408,"2023-06-02":245,"2023-06-03":629,"2023-06-04":524,"2023-06-05":888,"2023-06-06":244,"2023-06-07":663,"2023-06-08":1287,"2023-06-21":0,"2023-06-22":196,"2023-06-23":278,"2023-06-24":99,"2023-06-25":177,"2023-06-26":95,"2023-06-27":0,"2023-06-28":12,"2023-07-09":0,"2023-12-11":420,"2023-12-12":272,"2023-12-14":64,"2023-12-15":104,"2023-12-17":18,"2024-01-07":167,"2024-12-08":514,"2024-12-09":203,"2024-12-10":116,"2025-02-24":68},"bookshelves":{"2023-10-22":233,"2023-10-23":94,"2023-10-24":422,"2023-10-25":73,"2023-10-26":113,"2023-10-27":21,"2023-10-28":116,"2023-10-29":289,"2023-10-30":1009.7,"2023-10-31":34,"2023-11-01":329,"2023-11-02":7,"2023-11-03":2,"2023-11-04":210,"2023-11-05":3,"2023-11-06":128,"2023-11-07":474,"2023-11-08":386,"2023-11-09":495,"2023-11-10":776,"2023-11-11":934,"2023-11-12":1009.7,"2023-11-13":894,"2023-11-14":184,"2023-11-15":163,"2023-11-16":32,"2023-11-17":511,"2023-11-18":837,"2023-11-19":849,"2023-11-20":691,"2023-11-21":987,"2023-11-22":1009.7,"2023-11-23":730,"2023-11-25":1009.7,"2023-11-26":965,"2023-11-27":575,"2023-11-28":240,"2023-11-29":516,"2023-11-30":669,"2023-12-01":47,"2023-12-02":1009.7,"2023-12-03":412,"2023-12-04":318,"2023-12-05":199,"2023-12-06":586,"2023-12-18":49,"2024-01-11":23,"2024-02-01":2,"2024-02-19":0,"2024-02-23":0},"aletheia":{"2024-01-01":604,"2024-01-02":498,"2024-01-03":187,"2024-01-04":783,"2024-01-05":223,"2024-01-06":504,"2024-01-07":649,"2024-01-08":596,"2024-01-09":54,"2024-01-10":644,"2024-01-11":166,"2024-01-12":745,"2024-01-13":175,"2024-01-16":84,"2024-02-02":102,"2024-02-04":419,"2024-02-05":129,"2024-02-16":151,"2024-02-20":1,"2024-02-25":2,"2024-02-26":407,"2024-02-27":404,"2024-02-28":205,"2024-02-29":171,"2024-03-01":293,"2024-03-02":193,"2024-03-03":489,"2024-03-04":843,"2024-03-05":536,"2024-03-06":235,"2024-03-07":553,"2024-03-08":207,"2024-03-09":940.4,"2024-03-10":659,"2024-03-11":442,"2024-03-12":738,"2024-03-13":495,"2024-03-14":29,"2024-03-15":478,"2024-03-16":2,"2024-03-17":520,"2024-03-18":940.4,"2024-03-19":413,"2024-03-20":645,"2024-03-21":940.4,"2024-03-22":940.4,"2024-03-24":165,"2024-03-25":149,"2024-03-26":149,"2024-03-27":940.4,"2024-03-28":110,"2024-03-29":940.4,"2024-03-30":546,"2024-03-31":872,"2024-04-01":407,"2024-04-02":592,"2024-04-03":4,"2024-04-04":940.4,"2024-04-05":226,"2024-04-13":137,"2024-04-14":241,"2024-04-15":6},"bwv":{"2022-04-01":1,"2022-04-09":5,"2022-04-24":0,"2022-04-25":35,"2022-05-02":0,"2022-05-03":0,"2022-05-06":0,"2025-05-19":1052,"2025-05-20":847,"2025-05-21":542,"2025-05-22":414,"2025-05-23":690,"2025-05-24":3333.0,"2025-05-25":3333.0,"2025-05-26":2378,"2025-05-27":3333.0,"2025-05-28":2633,"2025-05-29":744,"2025-05-30":2909,"2025-05-31":107,"2025-06-02":3333.0,"2025-06-03":1150,"2025-06-04":334,"2025-06-05":1910,"2025-06-06":1998,"2025-06-07":3333.0,"2025-06-08":1528,"2025-06-09":2966,"2025-06-10":1353,"2025-06-11":1013,"2025-06-12":1384,"2025-06-13":0,"2025-06-14":931,"2025-06-16":1355,"2025-06-17":78,"2025-06-18":637,"2025-06-19":310,"2025-06-26":23,"2025-06-27":547,"2025-06-28":191,"2025-06-29":598,"2025-06-30":0,"2025-07-01":0,"2025-07-02":0,"2025-07-11":6,"2025-07-12":488},"mundial":{"2026-06-05":2758,"2026-06-06":1873,"2026-06-07":1276,"2026-06-08":4146,"2026-06-09":2662,"2026-06-10":560,"2026-06-11":2070,"2026-06-12":655,"2026-06-13":774,"2026-06-14":768,"2026-06-15":1844,"2026-06-16":1057,"2026-06-17":837,"2026-06-18":1962,"2026-06-19":418,"2026-06-20":2345,"2026-06-21":4591.6,"2026-06-22":945,"2026-06-23":130,"2026-06-24":4591.6,"2026-06-25":1146,"2026-06-26":2469,"2026-06-27":4591.6,"2026-06-28":1826,"2026-06-29":2957,"2026-06-30":2293,"2026-07-01":1071,"2026-07-02":3726,"2026-07-03":1857,"2026-07-04":1771,"2026-07-05":1736,"2026-07-06":1766,"2026-07-07":657,"2026-07-08":3825,"2026-07-09":1231,"2026-07-10":876,"2026-07-11":1197,"2026-07-12":2051,"2026-07-13":2322,"2026-07-14":3610,"2026-07-15":119,"2026-07-16":4591.6,"2026-07-17":721,"2026-07-18":2277,"2026-07-19":1654,"2026-07-20":210,"2026-07-21":487,"2026-07-22":4591.6,"2026-07-23":1146,"2026-07-24":1413,"2026-07-25":1249,"2026-07-26":4591.6,"2026-07-27":709},"gear":{"2026-08-24":1520.0,"2026-08-25":1192,"2026-08-26":1520,"2026-08-27":784,"2026-08-28":266,"2026-08-29":521,"2026-09-02":1505,"2026-09-03":400,"2026-09-05":0,"2026-09-06":5,"2026-09-12":2},"klam":{"2021-09-14":684.5,"2021-09-15":317,"2021-09-16":263,"2021-10-08":112,"2021-10-09":15,"2021-10-29":46,"2021-11-01":12,"2021-11-09":0},"openmozart":{"2021-09-18":1055.6,"2021-09-19":444,"2021-09-20":689,"2021-09-21":753,"2021-09-22":1055.6,"2021-09-23":818,"2021-09-24":605,"2021-09-25":234,"2021-09-26":615,"2021-09-27":188,"2021-09-28":12,"2021-10-09":0,"2022-03-26":43},"music":{"2021-02-04":1603.4,"2021-02-05":860,"2021-02-07":37,"2021-02-18":37,"2021-03-10":6,"2021-03-20":4,"2021-03-21":32,"2021-03-24":0,"2021-03-30":223,"2021-04-01":201,"2021-04-02":615,"2021-04-03":111,"2021-04-04":473,"2021-04-05":219,"2021-04-07":108,"2021-04-26":12,"2021-05-06":10,"2021-09-14":10,"2024-01-13":573,"2024-01-14":924,"2024-01-15":47,"2024-01-16":1603.4,"2024-01-17":1603.4,"2024-01-18":619,"2024-01-19":1553,"2024-01-20":238,"2024-02-16":0,"2024-11-12":27,"2025-01-27":230,"2025-02-09":26,"2025-04-17":0,"2025-07-19":0,"2026-09-23":528,"2026-09-24":1144,"2026-09-25":1603.4,"2026-09-26":167,"2026-09-27":73,"2026-09-30":508,"2026-10-01":554,"2026-10-02":269,"2026-10-04":17,"2026-10-06":267,"2026-10-07":4,"2026-10-09":344,"2026-10-10":1603.4,"2026-10-11":1062,"2026-10-12":12,"2026-10-13":4}};
+  const dailySeries = {"parimagine":{"2013-04-28":872,"2013-05-19":889,"2013-05-20":3148.6,"2013-05-21":851,"2013-05-22":946,"2013-05-23":795,"2013-05-24":3148.6,"2013-05-25":10,"2013-05-26":331,"2013-05-27":652,"2013-05-28":1671,"2013-05-29":6,"2013-06-08":1239,"2013-06-12":56,"2013-06-21":3,"2013-06-24":488,"2013-06-25":283,"2013-06-27":68,"2013-06-28":280,"2013-06-29":546,"2013-07-01":91,"2013-07-29":93,"2013-09-10":46,"2013-09-27":2,"2013-10-28":76,"2013-11-01":55,"2013-11-24":3148.6,"2013-11-25":210,"2018-04-25":53},"earthlydelights":{"2016-01-16":137,"2016-01-17":605.5,"2016-01-18":384,"2016-01-19":314,"2016-01-20":87,"2016-01-23":10,"2016-01-24":59,"2016-01-29":605.5,"2016-02-01":20,"2016-02-02":160,"2016-02-03":605.5,"2016-02-04":560,"2016-02-05":463,"2016-02-06":67,"2016-02-07":35,"2016-02-09":605.5,"2016-02-10":91,"2016-02-11":150,"2016-02-12":485,"2016-02-13":586,"2016-02-17":6,"2016-02-21":46,"2016-02-26":143,"2016-03-10":155,"2016-04-11":0,"2016-04-21":10,"2016-05-29":0,"2016-06-21":0,"2016-06-25":106,"2016-06-28":4,"2016-07-14":8,"2016-09-01":0,"2017-01-21":0,"2017-05-03":0,"2017-06-14":0,"2017-08-23":14,"2017-09-25":0,"2017-10-04":0,"2018-01-05":0,"2018-03-03":279,"2018-05-03":0,"2018-08-08":200,"2018-08-09":0,"2018-08-30":0,"2018-09-27":186,"2018-12-19":0,"2019-01-23":90,"2019-04-12":605.5},"covid":{"2020-06-15":328,"2020-06-18":2876.2,"2020-06-19":825,"2020-06-20":294,"2020-06-21":1254,"2020-06-22":660,"2020-06-23":487,"2020-06-24":45,"2020-06-25":576,"2020-06-26":65,"2020-06-27":103,"2020-07-26":18,"2020-07-28":56,"2020-10-21":18,"2020-12-20":2876.2,"2020-12-21":1808,"2020-12-22":2876.2,"2020-12-23":2876.2,"2020-12-24":150,"2020-12-25":2764,"2020-12-26":702,"2020-12-27":1620,"2020-12-28":1310,"2020-12-29":2208,"2020-12-30":14,"2020-12-31":730,"2021-01-01":687,"2021-01-02":287,"2021-01-03":152,"2021-01-04":0,"2021-01-15":71,"2021-01-18":12,"2021-05-06":35,"2021-05-07":1028,"2021-05-08":1440,"2021-05-09":37,"2021-05-13":3,"2021-09-14":0},"sangiosleague":{"2021-07-20":151,"2021-07-21":130,"2021-07-22":120,"2021-07-23":375.2,"2021-07-24":4,"2021-07-25":157,"2021-07-26":316,"2021-07-27":375.2,"2021-07-28":375.2,"2021-07-29":375.2,"2021-07-30":21,"2021-08-01":151,"2021-08-02":0,"2021-08-04":0,"2021-08-05":6,"2021-08-10":13,"2021-08-11":77,"2021-08-12":0,"2021-08-17":0,"2021-08-18":0,"2021-08-20":0,"2021-08-25":0,"2021-08-30":0,"2021-08-31":0,"2021-09-02":10,"2021-09-03":0,"2021-09-05":0,"2021-09-06":0,"2021-09-08":0,"2021-09-10":0,"2021-09-11":218,"2021-09-14":0,"2021-09-15":0,"2021-09-17":0,"2021-09-20":0,"2021-09-21":0,"2021-09-22":0},"sangiovannilipioni":{"2021-08-09":482.4,"2021-08-10":106,"2021-08-11":142,"2021-08-19":20,"2021-08-20":2,"2021-08-21":1,"2021-08-25":15,"2021-08-26":19,"2021-08-31":0,"2021-09-02":4,"2021-09-03":3,"2021-09-04":146,"2021-09-05":7,"2021-09-07":0,"2021-09-08":482.4,"2021-09-09":482.4,"2021-09-10":291,"2021-09-11":183,"2021-09-13":0,"2021-09-14":0,"2021-09-17":0,"2021-09-20":0,"2021-09-22":0,"2021-12-23":7,"2022-04-29":0},"ciaccona":{"2021-11-28":0,"2021-12-10":0,"2021-12-12":0,"2021-12-13":0,"2021-12-18":0,"2021-12-19":0,"2021-12-20":0,"2021-12-22":20,"2022-09-27":0,"2023-03-16":11,"2023-03-17":67,"2023-03-18":1078,"2023-03-19":599,"2023-03-20":193,"2023-03-21":140,"2023-03-22":781,"2023-03-23":286,"2023-03-24":230,"2023-03-25":472,"2023-03-26":200,"2023-03-27":180,"2023-03-28":2051.1,"2023-03-29":422,"2023-03-30":887,"2023-03-31":1786,"2023-04-01":2051.1,"2023-04-02":450,"2023-04-03":688,"2023-04-04":2051.1,"2023-04-05":871,"2023-04-06":302,"2023-04-07":1989,"2023-04-08":568,"2023-04-09":1120,"2023-04-10":1364,"2023-04-11":474,"2023-04-12":533,"2023-04-13":684,"2023-04-14":600,"2023-04-15":382,"2023-04-16":556,"2023-04-17":460,"2023-04-18":689,"2023-04-19":883,"2023-04-20":1112,"2023-04-21":907,"2023-04-22":549,"2023-04-23":1874,"2023-04-24":885,"2023-04-25":1401,"2023-04-26":1894,"2023-04-27":446,"2023-04-28":478,"2023-04-29":796,"2023-04-30":0,"2023-05-01":2051.1,"2023-05-02":1492,"2023-05-03":321,"2023-05-04":367,"2023-05-05":2051.1,"2023-05-06":510,"2023-05-07":761,"2023-05-08":520,"2023-05-09":2051.1,"2023-05-10":2051.1,"2023-05-11":2051.1,"2023-05-12":1024,"2023-05-13":43,"2023-05-15":2,"2023-05-16":1796,"2023-05-17":1028,"2023-05-18":464,"2023-05-19":2051.1,"2023-05-20":1837,"2023-05-21":2051.1,"2023-05-22":2051.1,"2023-05-23":2051.1,"2023-05-24":1596,"2023-05-25":87,"2023-05-26":763,"2023-05-27":22,"2023-05-28":1727,"2023-05-29":445,"2023-05-30":209,"2023-05-31":270,"2023-06-01":1408,"2023-06-02":243,"2023-06-03":622,"2023-06-04":521,"2023-06-05":878,"2023-06-06":244,"2023-06-07":663,"2023-06-08":1272,"2023-06-21":0,"2023-06-22":194,"2023-06-23":275,"2023-06-24":99,"2023-06-25":173,"2023-06-26":95,"2023-06-27":0,"2023-06-28":12,"2023-07-09":0,"2023-12-11":398,"2023-12-12":252,"2023-12-14":64,"2023-12-15":85,"2023-12-17":18,"2024-01-07":167,"2024-12-08":514,"2024-12-09":178,"2024-12-10":97,"2025-02-24":61},"bookshelves":{"2023-10-22":210,"2023-10-23":85,"2023-10-24":420,"2023-10-25":73,"2023-10-26":104,"2023-10-27":19,"2023-10-28":115,"2023-10-29":288,"2023-10-30":989.6,"2023-10-31":21,"2023-11-01":46,"2023-11-02":7,"2023-11-03":2,"2023-11-04":50,"2023-11-05":2,"2023-11-06":128,"2023-11-07":474,"2023-11-08":269,"2023-11-09":495,"2023-11-10":669,"2023-11-11":934,"2023-11-12":989.6,"2023-11-13":709,"2023-11-14":6,"2023-11-15":99,"2023-11-16":31,"2023-11-17":509,"2023-11-18":837,"2023-11-19":849,"2023-11-20":691,"2023-11-21":987,"2023-11-22":989.6,"2023-11-23":730,"2023-11-25":989.6,"2023-11-26":960,"2023-11-27":491,"2023-11-28":240,"2023-11-29":516,"2023-11-30":669,"2023-12-01":47,"2023-12-02":989.6,"2023-12-03":412,"2023-12-04":318,"2023-12-05":199,"2023-12-06":586,"2023-12-18":35,"2024-01-11":0,"2024-02-01":2,"2024-02-19":0,"2024-02-23":0},"aletheia":{"2024-01-01":595,"2024-01-02":490,"2024-01-03":187,"2024-01-04":783,"2024-01-05":221,"2024-01-06":504,"2024-01-07":626,"2024-01-08":592,"2024-01-09":42,"2024-01-10":638,"2024-01-11":166,"2024-01-12":689,"2024-01-13":89,"2024-01-16":84,"2024-02-02":102,"2024-02-04":419,"2024-02-05":129,"2024-02-16":147,"2024-02-20":1,"2024-02-25":2,"2024-02-26":347,"2024-02-27":404,"2024-02-28":170,"2024-02-29":151,"2024-03-01":293,"2024-03-02":170,"2024-03-03":463,"2024-03-04":843,"2024-03-05":536,"2024-03-06":235,"2024-03-07":543,"2024-03-08":183,"2024-03-09":863.8,"2024-03-10":575,"2024-03-11":442,"2024-03-12":412,"2024-03-13":369,"2024-03-14":29,"2024-03-15":408,"2024-03-16":2,"2024-03-17":240,"2024-03-18":863.8,"2024-03-19":369,"2024-03-20":607,"2024-03-21":863.8,"2024-03-22":863.8,"2024-03-24":164,"2024-03-25":9,"2024-03-26":130,"2024-03-27":863.8,"2024-03-28":104,"2024-03-29":863.8,"2024-03-30":440,"2024-03-31":862,"2024-04-01":407,"2024-04-02":592,"2024-04-03":4,"2024-04-04":863.8,"2024-04-05":226,"2024-04-13":127,"2024-04-14":211,"2024-04-15":0},"bwv":{"2022-04-01":0,"2022-04-09":5,"2022-04-24":0,"2022-04-25":24,"2022-05-02":0,"2022-05-03":0,"2022-05-06":0,"2025-05-19":895,"2025-05-20":419,"2025-05-21":475,"2025-05-22":388,"2025-05-23":641,"2025-05-24":3317.5,"2025-05-25":3317.5,"2025-05-26":2370,"2025-05-27":3317.5,"2025-05-28":2576,"2025-05-29":744,"2025-05-30":2909,"2025-05-31":107,"2025-06-02":3317.5,"2025-06-03":1106,"2025-06-04":169,"2025-06-05":1550,"2025-06-06":1960,"2025-06-07":3317.5,"2025-06-08":1206,"2025-06-09":2966,"2025-06-10":1315,"2025-06-11":1013,"2025-06-12":1304,"2025-06-13":0,"2025-06-14":848,"2025-06-16":1208,"2025-06-17":59,"2025-06-18":637,"2025-06-19":293,"2025-06-26":0,"2025-06-27":547,"2025-06-28":191,"2025-06-29":598,"2025-06-30":0,"2025-07-01":0,"2025-07-02":0,"2025-07-11":6,"2025-07-12":404},"mundial":{"2026-06-05":2466,"2026-06-06":1756,"2026-06-07":1108,"2026-06-08":3307.0,"2026-06-09":2647,"2026-06-10":471,"2026-06-11":2070,"2026-06-12":549,"2026-06-13":774,"2026-06-14":768,"2026-06-15":1333,"2026-06-16":725,"2026-06-17":837,"2026-06-18":1274,"2026-06-19":418,"2026-06-20":2120,"2026-06-21":3307.0,"2026-06-22":799,"2026-06-23":130,"2026-06-24":3307.0,"2026-06-25":1096,"2026-06-26":1891,"2026-06-27":1907,"2026-06-28":888,"2026-06-29":1766,"2026-06-30":1797,"2026-07-01":980,"2026-07-02":2484,"2026-07-03":1815,"2026-07-04":1582,"2026-07-05":1341,"2026-07-06":1726,"2026-07-07":579,"2026-07-08":2584,"2026-07-09":1147,"2026-07-10":753,"2026-07-11":499,"2026-07-12":1809,"2026-07-13":1715,"2026-07-14":3307.0,"2026-07-15":39,"2026-07-16":2235,"2026-07-17":446,"2026-07-18":898,"2026-07-19":1540,"2026-07-20":210,"2026-07-21":487,"2026-07-22":3307.0,"2026-07-23":894,"2026-07-24":1166,"2026-07-25":1181,"2026-07-26":3307.0,"2026-07-27":709},"gear":{"2026-08-24":1520.0,"2026-08-25":1173,"2026-08-26":1520,"2026-08-27":784,"2026-08-28":266,"2026-08-29":521,"2026-09-02":1505,"2026-09-03":400,"2026-09-05":0,"2026-09-06":5,"2026-09-12":2},"klam":{"2021-09-14":675.5,"2021-09-15":317,"2021-09-16":263,"2021-10-08":112,"2021-10-09":15,"2021-10-29":46,"2021-11-01":12,"2021-11-09":0},"openmozart":{"2021-09-18":923.0,"2021-09-19":392,"2021-09-20":681,"2021-09-21":743,"2021-09-22":923.0,"2021-09-23":689,"2021-09-24":460,"2021-09-25":234,"2021-09-26":575,"2021-09-27":188,"2021-09-28":12,"2021-10-09":0,"2022-03-26":43},"music":{"2021-02-04":1177,"2021-02-05":284,"2021-02-07":37,"2021-02-18":37,"2021-03-10":6,"2021-03-20":4,"2021-03-21":32,"2021-03-24":0,"2021-03-30":223,"2021-04-01":201,"2021-04-02":540,"2021-04-03":111,"2021-04-04":473,"2021-04-05":219,"2021-04-07":108,"2021-04-26":12,"2021-05-06":10,"2021-09-14":10,"2024-01-13":238,"2024-01-14":849,"2024-01-15":47,"2024-01-16":1264.6,"2024-01-17":1264.6,"2024-01-18":619,"2024-01-19":1264.6,"2024-01-20":238,"2024-02-16":0,"2024-11-12":0,"2025-01-27":230,"2025-02-09":26,"2025-04-17":0,"2025-07-19":0,"2026-09-23":528,"2026-09-24":577,"2026-09-25":1264.6,"2026-09-26":83,"2026-09-27":73,"2026-09-30":155,"2026-10-01":250,"2026-10-02":163,"2026-10-04":17,"2026-10-06":267,"2026-10-07":4,"2026-10-09":344,"2026-10-10":1264.6,"2026-10-11":393,"2026-10-12":12,"2026-10-13":4},"athenaeum":{"2024-04-13":263,"2024-04-14":106,"2024-04-15":0,"2024-04-20":0,"2024-04-22":0,"2024-05-19":190,"2024-05-20":126,"2024-05-21":420.0,"2024-05-22":52,"2024-05-23":62,"2024-05-24":182,"2024-05-25":186,"2024-05-26":375,"2024-05-27":34,"2024-05-29":70,"2024-05-30":333,"2024-05-31":0,"2024-06-01":90,"2024-10-14":14,"2024-10-16":5,"2024-10-17":420.0,"2024-10-20":0,"2024-10-21":7,"2024-10-22":42,"2024-10-23":371,"2024-11-18":155,"2024-11-19":168,"2024-11-20":396,"2024-11-21":420.0,"2024-11-22":2,"2024-11-23":66,"2024-11-24":85,"2024-11-25":205,"2024-11-26":1,"2024-11-27":415,"2024-11-30":420.0,"2024-12-01":420.0,"2024-12-02":197,"2024-12-03":78,"2024-12-04":7,"2024-12-05":125,"2024-12-07":9,"2024-12-08":13,"2024-12-10":0,"2024-12-14":82,"2025-04-07":27}};
 
   data.forEach(function (d) {
     d.commitsPerDay = d.commits / d.activeDays;
     d.locPerDay = d.loc / d.activeDays;
+    // Primary y-axis metric (2026-10-15): net new lines (added-deleted,
+    // cloc-filtered, discarding same-burst rework automatically) per
+    // working day (distinct calendar days with >=1 commit -- NOT the
+    // burst's calendar span, which would dilute the rate with idle gaps
+    // inside the burst). Replaces commits/day entirely as the axis: commit
+    // frequency is a workflow habit orthogonal to output, not a
+    // productivity measure. Can be negative (a burst that was net cleanup
+    // rather than net addition -- e.g. music3, earthlydelights5) -- the
+    // axis and y(0) baseline both account for this, see niceMax/niceMin.
+    d.netLocPerDay = d.netLoc / d.activeDays;
   });
 
   // ---- time parsing: day-precision (epoch days, UTC) ----
@@ -516,9 +570,24 @@
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
   }
 
-  const maxVal = Math.max.apply(null, chartData.map(function (d) { return d.commitsPerDay; }));
-  const niceMax = Math.ceil(maxVal * 100) / 100 + 0.01;
-  function y(v) { return plotTop + plotH * (1 - v / niceMax); }
+  // ---- y-axis scale: net lines/working-day, which CAN be negative (a
+  // burst that was net cleanup rather than net addition) -- so the scale
+  // is [niceMin, niceMax], not [0, niceMax]. "Nice" = classic 1/2/5/10
+  // stepping so gridlines land on round numbers regardless of the actual
+  // data's magnitude (values here range from tens to low thousands,
+  // unlike the old commits/day axis which was always a small decimal).
+  function niceCeil(v) {
+    if (v <= 0) return 0;
+    const exp = Math.floor(Math.log10(v));
+    const frac = v / Math.pow(10, exp);
+    const niceFrac = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
+    return niceFrac * Math.pow(10, exp);
+  }
+  const rawMax = Math.max.apply(null, chartData.map(function (d) { return d.netLocPerDay; }));
+  const rawMin = Math.min.apply(null, chartData.map(function (d) { return d.netLocPerDay; }));
+  const niceMax = niceCeil(Math.max(rawMax, 0));
+  const niceMin = -niceCeil(Math.max(-rawMin, 0));
+  function y(v) { return plotTop + plotH * (niceMax - v) / (niceMax - niceMin); }
 
   // ---- zoom/pan state (x-axis only) ----
   let viewMinDay = fullMinDay, viewMaxDay = fullMaxDay;
@@ -599,14 +668,17 @@
     const viewSpan = viewMaxDay - viewMinDay;
     function x(day) { return marginLeft + plotW * (day - viewMinDay) / viewSpan; }
 
-    // y gridlines (4 steps) + ticks
+    // y gridlines (4 steps) + ticks -- range is [niceMin, niceMax], not
+    // [0, niceMax] (net lines/day can be negative), and values are in the
+    // tens-to-thousands now, not a small decimal, hence toLocaleString()
+    // not toFixed(2).
     const steps = 4;
     for (let i = 0; i <= steps; i++) {
-      const v = (niceMax / steps) * i;
+      const v = niceMin + (niceMax - niceMin) / steps * i;
       const yy = y(v);
       svg.appendChild(el("line", { x1: marginLeft, x2: W - marginRight, y1: yy, y2: yy, class: "gridline" }));
       const t = el("text", { x: marginLeft - 8, y: yy + 3, class: "tick-label", "text-anchor": "end" });
-      t.textContent = v.toFixed(2);
+      t.textContent = Math.round(v).toLocaleString();
       svg.appendChild(t);
     }
     svg.appendChild(el("line", { x1: marginLeft, x2: W - marginRight, y1: y(0), y2: y(0), class: "baseline" }));
@@ -643,13 +715,13 @@
       x: 14, y: plotTop + plotH / 2, class: "axis-title",
       "text-anchor": "middle", transform: "rotate(-90 14 " + (plotTop + plotH / 2) + ")",
     });
-    yTitle.textContent = "Commits per day (per burst)";
+    yTitle.textContent = "Net lines of code per working day (per burst)";
     svg.appendChild(yTitle);
 
     const xTitle = el("text", {
       x: marginLeft + plotW / 2, y: H - 4, class: "axis-title", "text-anchor": "middle",
     });
-    xTitle.textContent = "Calendar time, by each burst's actual start → end dates (bars = per-day lines changed, centered on the commits/day line; circle = LOC at the end of the burst; track thickness ∝ total commits)";
+    xTitle.textContent = "Calendar time, by each burst's actual start → end dates (bars = per-day lines changed, centered on the net-lines/working-day line; circle = LOC at the end of the burst; track thickness ∝ total commits)";
     svg.appendChild(xTitle);
 
     // which projects intersect the current view, for the per-row max-bar-height
@@ -657,14 +729,14 @@
     // are actually visible at the same time, so bars get taller as you zoom
     // into a window with fewer simultaneously-visible projects.
     const visible = chartData.filter(function (d) { return d.dayStart <= viewMaxDay && d.dayEnd >= viewMinDay; });
-    const sortedY = visible.map(function (d) { return y(d.commitsPerDay); }).sort(function (a, b) { return a - b; });
+    const sortedY = visible.map(function (d) { return y(d.netLocPerDay); }).sort(function (a, b) { return a - b; });
     let minGap = Infinity;
     for (let i = 1; i < sortedY.length; i++) minGap = Math.min(minGap, sortedY[i] - sortedY[i - 1]);
     const maxBarPx = clamp(minGap === Infinity ? 40 : minGap * 0.8, 4, 40);
 
     visible.forEach(function (d) {
       const info = computeBars(d, viewMinDay, viewMaxDay);
-      const yy = y(d.commitsPerDay);
+      const yy = y(d.netLocPerDay);
       const sw = thickness(d.commits);
       const x1 = clamp(x(info ? info.spanStart : d.dayStart), marginLeft, W - marginRight);
       const x2 = clamp(x(info ? info.spanEnd : d.dayEnd), marginLeft, W - marginRight);
@@ -740,10 +812,13 @@
         g.appendChild(nameLbl);
       }
 
-      // the standout bursts get their number called out too
-      if (d.name === "bwv2" || d.name === "gear") {
+      // the dataset's highest and lowest net-lines/day get their number
+      // called out too (dynamic, not hardcoded names -- the old bwv2/gear
+      // callout was tied to commits/day, a different axis with different
+      // outliers)
+      if (d.netLocPerDay === rawMax || d.netLocPerDay === rawMin) {
         const lbl = el("text", { x: (x1 + x2) / 2, y: yy - tallestBarPx / 2 - r - 8, class: "bar-label", "text-anchor": "middle" });
-        lbl.textContent = d.commitsPerDay.toFixed(2);
+        lbl.textContent = Math.round(d.netLocPerDay).toLocaleString();
         g.appendChild(lbl);
       }
     });
@@ -767,7 +842,7 @@
     const plotLeftP = marginLeftP;
     const plotRightP = W - marginRightP;
     const valueAxisWP = plotRightP - plotLeftP;
-    function xP(v) { return plotLeftP + valueAxisWP * (v / niceMax); }
+    function xP(v) { return plotLeftP + valueAxisWP * (v - niceMin) / (niceMax - niceMin); }
 
     H = marginTopP + plotHeightP + marginBottomP;
     plotTop = marginTopP; plotH = plotHeightP; plotW = valueAxisWP;
@@ -776,11 +851,11 @@
     // value-axis gridlines (now vertical), ticks along the top
     const steps = 4;
     for (let i = 0; i <= steps; i++) {
-      const v = (niceMax / steps) * i;
+      const v = niceMin + (niceMax - niceMin) / steps * i;
       const xx = xP(v);
       svg.appendChild(el("line", { x1: xx, x2: xx, y1: marginTopP, y2: H - marginBottomP, class: "gridline" }));
       const t = el("text", { x: xx, y: marginTopP - 8, class: "tick-label", "text-anchor": "middle" });
-      t.textContent = v.toFixed(2);
+      t.textContent = Math.round(v).toLocaleString();
       svg.appendChild(t);
     }
     svg.appendChild(el("line", { x1: xP(0), x2: xP(0), y1: marginTopP, y2: H - marginBottomP, class: "baseline" }));
@@ -806,7 +881,7 @@
     const LABEL_ROW_H = 12;
 
     chartData.slice().sort(function (a, b) { return a.dayStart - b.dayStart; }).forEach(function (d) {
-      const xAnchor = xP(d.commitsPerDay);
+      const xAnchor = xP(d.netLocPerDay);
       const y1 = yP(d.dayStart), y2 = Math.max(yP(d.dayEnd), y1 + 2);
       const sw = thickness(d.commits);
       const r = radius(d.loc);
@@ -998,7 +1073,7 @@
   const table = document.getElementById("dataTable");
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  ["Burst", "Project", "Active window", "Active days", "Commits", "Commits/day", "LOC (at burst end)", "LOC/day", "AI-attributed"].forEach(function (h) {
+  ["Burst", "Project", "Active window", "Working days", "Commits", "Commits/day", "LOC (at burst end)", "Net LOC/working-day", "AI-attributed"].forEach(function (h) {
     const th = document.createElement("th");
     th.textContent = h;
     headRow.appendChild(th);
@@ -1017,7 +1092,7 @@
       d.commits.toLocaleString(),
       d.commitsPerDay.toFixed(2),
       d.loc.toLocaleString(),
-      d.locPerDay.toFixed(1),
+      Math.round(d.netLocPerDay).toLocaleString(),
       d.aiPct === null ? "not yet measured" : d.aiPct + "%",
     ];
     cells.forEach(function (c) {
