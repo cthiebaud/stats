@@ -479,38 +479,25 @@
     else { viewMaxDay = viewMinDay + w; }
   }
 
-  // bucket size snapped to the nearest of {day, week, month, quarter, year},
-  // targeting ~20 bars across a project's own currently-rendered pixel span
-  // -- so bars resolve finer as you zoom into a narrower window.
-  const BUCKET_CANDIDATES_DAYS = [1, 7, 30, 91, 365];
-  function snapBucketDays(raw) {
-    let best = BUCKET_CANDIDATES_DAYS[0], bestDist = Infinity;
-    BUCKET_CANDIDATES_DAYS.forEach(function (c) {
-      const dist = Math.abs(Math.log(c) - Math.log(raw));
-      if (dist < bestDist) { bestDist = dist; best = c; }
-    });
-    return best;
-  }
-
+  // No aggregation: ~600 data points total across all 12 projects is nothing
+  // to render directly, so each real day is its own bar -- always the same
+  // duration (1 day) for every project, which is trivially "one bucket size
+  // for all" without needing to derive a shared size from anything. (Tried
+  // deriving a shared size from the current view window first: correct in
+  // principle, but using the full 13-year default view as the divisor made
+  // it absurdly coarse -- 365-day buckets collapsed short projects to a
+  // single flat block. Deriving it from each project's own span, before
+  // that, gave a 90x spread across projects, not comparable either. Turns
+  // out neither derivation was needed -- the data's native resolution was
+  // already fine enough to render as-is.) Zoom now just changes how many
+  // screen-pixels each day gets, not how the data is processed.
   function computeBars(d, viewMinDay, viewMaxDay) {
     const spanStart = Math.max(d.dayStart, viewMinDay);
     const spanEnd = Math.min(d.dayEnd, viewMaxDay);
     if (spanEnd <= spanStart || !d.series.length) return null;
-    const targetBars = 20;
-    const rawBucket = Math.max(1, (spanEnd - spanStart) / targetBars);
-    const bucketDays = snapBucketDays(rawBucket);
-    const origin = d.dayStart;
-    const buckets = {};
-    d.series.forEach(function (p) {
-      if (p.day < viewMinDay || p.day > viewMaxDay) return;
-      const idx = Math.floor((p.day - origin) / bucketDays);
-      buckets[idx] = (buckets[idx] || 0) + p.value;
-    });
-    const bars = Object.keys(buckets).map(function (k) {
-      const idx = parseInt(k, 10);
-      return { bStart: origin + idx * bucketDays, bEnd: origin + (idx + 1) * bucketDays, value: buckets[k] };
-    });
-    bars.sort(function (a, b) { return a.bStart - b.bStart; });
+    const bars = d.series
+      .filter(function (p) { return p.day >= viewMinDay && p.day <= viewMaxDay; })
+      .map(function (p) { return { bStart: p.day, bEnd: p.day + 1, value: p.value }; });
     const peak = Math.max.apply(null, bars.map(function (b) { return b.value; }).concat([0]));
     return { bars: bars, peak: peak, spanStart: spanStart, spanEnd: spanEnd };
   }
