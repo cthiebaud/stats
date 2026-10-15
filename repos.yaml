@@ -33,7 +33,9 @@ groups:
     status: include
     site: null
     repos:
-      - {owner: usa-covid-aequologica-net, repo: usa.covid.aequologica.net}
+      - owner: usa-covid-aequologica-net
+        repo: usa.covid.aequologica.net
+        extra_refs: [origin/backup]  # 148 commits, 2020-06-18 -> 2020-12-21, confirmed real (100% his own, genuine source edits) -- disconnected history from master (no common ancestor: a from-scratch restart on 2020-12-20), not reachable via plain `git log`. This is Christophe's actual project start; "master" alone understates it by ~6 months.
       - {owner: covid-aequologica-net, repo: covid-aequologica-net.github.io}
       - {owner: covid-aequologica-net, repo: proxy}
     note: >
@@ -58,7 +60,9 @@ groups:
     status: include
     site: null
     repos:
-      - {owner: sangiovannilipioni, repo: sangiovannilipioni.github.io}
+      - owner: sangiovannilipioni
+        repo: sangiovannilipioni.github.io
+        extra_refs: [origin/nuxt3]  # 1 commit, "try nuxt3£" -- trivial, included for completeness
       - {owner: sangiovannilipioni, repo: sangiovannilipioni.api}
     note: >
       sangiovannilipioni.net (the CNAME still configured in the repo, and
@@ -71,7 +75,9 @@ groups:
     status: include
     site: https://ciaccona.cthiebaud.com
     repos:
-      - {owner: cthiebaud, repo: ciaccona}
+      - owner: cthiebaud
+        repo: ciaccona
+        extra_refs: [origin/dev, origin/dev2]  # 3 + 13 real commits, Apr/May 2023, never merged into main (origin/gh-pages also exists but is confirmed build output -- deploy-script commits renaming hashed .mjs bundles, manifest.json, CNAME shuffling -- NOT included)
       - {owner: musicollator, repo: ciaccona}
       - {owner: musicollator, repo: ciaccona-stationary}
       - {owner: cthiebaud, repo: sheet-music}
@@ -88,7 +94,9 @@ groups:
     status: include
     site: https://aletheia.cthiebaud.com
     repos:
-      - {owner: cthiebaud, repo: truth}
+      - owner: cthiebaud
+        repo: truth
+        extra_refs: [origin/production]  # 1 commit, trivial deployment-tracking edit, included for completeness
       - {owner: cthiebaud, repo: truth-reservoir}
     note: "\"aletheia\" (Greek for \"truth\") == cthiebaud/truth + cthiebaud/truth-reservoir (archived predecessor)."
 
@@ -137,7 +145,9 @@ groups:
     status: include
     site: https://gear.cthiebaud.com
     repos:
-      - {owner: cthiebaud, repo: gear}
+      - owner: cthiebaud
+        repo: gear
+        extra_refs: [origin/freeform-layout]  # 4 real commits, 2026-09-02/03, never merged into main (sound-file renames, free-node behavior, favicon set)
 
   - name: klam
     status: include
@@ -219,7 +229,9 @@ groups:
     site: https://music.cthiebaud.com
     repos:
       - {owner: cthiebaud, repo: music}
-      - {owner: cthiebaud, repo: vinyl}
+      - owner: cthiebaud
+        repo: vinyl
+        extra_refs: [origin/no_color_no_font]  # 58 real commits, 2024-01-13 -> 2026-09-27, never merged into main -- confirmed genuine hand-written feature work (body.html, src/js/_View.js/_Model.js, real messages like "re-introduced facebook videos"), not build output
     note: >
       REVERSES PROMPT.md's prior exclusion ("too tiny") -- Christophe
       confirmed (2026-10-15) that merging in vinyl gives it enough scope to

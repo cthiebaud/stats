@@ -29,6 +29,7 @@ BURSTS_JSON = Path(__file__).parent / "bursts.json"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from manual_excludes import MANUAL_EXCLUDES  # noqa: E402
+from repo_refs import refs_for  # noqa: E402
 
 LOC_EXCLUDE_LANGS = "SVG,JSON,YAML,CSV,XML"
 
@@ -48,15 +49,17 @@ def day_end_epoch(date_str):
     return int(dt.timestamp())
 
 
-def commit_list(path):
-    """[(epoch, sha), ...] sorted ascending."""
-    out = subprocess.run(["git", "-C", str(path), "log", "--format=%at %H"],
-                          capture_output=True, text=True).stdout
-    commits = []
-    for line in out.splitlines():
-        epoch, sha = line.split(" ")
-        commits.append((int(epoch), sha))
-    return sorted(commits)
+def commit_list(owner, repo, path):
+    """[(epoch, sha), ...] sorted ascending, across HEAD + any curated
+    extra_refs, deduped by sha."""
+    commits = {}
+    for ref in refs_for(owner, repo):
+        out = subprocess.run(["git", "-C", str(path), "log", ref, "--format=%at %H"],
+                              capture_output=True, text=True).stdout
+        for line in out.splitlines():
+            epoch, sha = line.split(" ")
+            commits[sha] = int(epoch)
+    return sorted((epoch, sha) for sha, epoch in commits.items())
 
 
 def latest_at_or_before(commits, cutoff_epoch):
@@ -96,7 +99,7 @@ def main():
         group = groups[project]
         repo_entries = [(e["owner"], e["repo"]) for e in group["repos"]]
         paths = {f"{o}/{r}": CLONES_DIR / project / o / r for o, r in repo_entries}
-        commits_cache = {key: commit_list(path) for key, path in paths.items()}
+        commits_cache = {f"{o}/{r}": commit_list(o, r, CLONES_DIR / project / o / r) for o, r in repo_entries}
         original_refs = {key: current_ref(path) for key, path in paths.items()}
 
         # A repo that stops receiving commits partway through a multi-burst

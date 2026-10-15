@@ -52,7 +52,7 @@ campaign) is **dropped entirely**, not merged into a neighbor. This was
 checked against the real distribution, not an arbitrary cutoff: every
 current single-day cluster has 1–3 commits, and the smallest *kept*
 multi-day burst is 27.2 active days — a real gap, not a tuned threshold.
-Result: 12 projects → **20 bursts**.
+Result: 14 projects → **22 bursts**.
 
 **Y-axis changed from scope/day to commits/day (per burst).** The old
 "scope" field (Christophe's subjective 1–5 whole-project feature-scope
@@ -162,6 +162,61 @@ Implemented in [scripts/gather_data.py](scripts/gather_data.py) as
 `active_days()` (project-level sum, superseded design) and
 [scripts/compute_bursts.py](scripts/compute_bursts.py) (per-burst, current
 design — same clustering rule, kept separate instead of summed).
+
+### Hidden-branch scanning (added 2026-10-15 — "branches should not be overlooked")
+
+Every pipeline script (`compute_bursts.py`, `lines_changed_by_day.py`,
+`compute_burst_loc.py`, `compute_burst_aipct.py`) previously ran `git log`
+with no explicit ref, which silently reads only the checked-out default
+branch — any real work sitting on an unmerged or disconnected branch was
+invisible. Caught when Christophe asked why `covid`'s commit history
+"looks gone" for the first half of 2020, which he specifically remembered
+as the actual project start. Answer: it wasn't gone, it was on
+`usa-covid-aequologica-net/usa.covid.aequologica.net`'s `backup` branch —
+148 commits, 2020-06-18 → 2020-12-21, with **no common ancestor with
+`master`** (`git merge-base` empty, `--is-ancestor` false — a genuine
+from-scratch restart on 2020-12-20, not just an unmerged branch). Christophe's
+memory was right; `master` alone understated his covid start by ~6 months.
+
+An audit of every included repo's non-default branches
+([scripts/audit_hidden_branches.py](scripts/audit_hidden_branches.py))
+found the branch lists cluttered with two confirmed-noise categories, not
+auto-excluded but flagged for eyeballing: `dependabot/*` (bot-authored
+dependency bumps, 1 commit each, never merged) and `gh-pages` (confirmed,
+twice, by reading actual file contents, to be deploy-script build output —
+hashed bundle filename renames, `manifest.json`, `.output/` artifacts —
+even though git credits Christophe as author, since he's the one who ran
+the deploy script). Six branches survived as real, human-authored,
+non-build-output work and were added as a curated `extra_refs:` list per
+repo entry in [repos.yaml](repos.yaml) (deliberately curated, not an
+automatic `git branch --all` scan, so the noise categories above can never
+sneak back in): `usa.covid.aequologica.net`'s `backup` (above),
+`cthiebaud/ciaccona`'s `dev`/`dev2` (16 commits, Apr/May 2023, never merged
+into `main`), `cthiebaud/vinyl`'s `no_color_no_font` (58 commits spanning
+2024-01-13 → 2026-09-27, confirmed genuine hand-written feature work, not
+build output), `cthiebaud/gear`'s `freeform-layout` (4 commits,
+2026-09-02/03), `cthiebaud/truth`'s `production`, and
+`sangiovannilipioni.github.io`'s `nuxt3` (the latter two trivial,
+1 commit each, included for completeness).
+
+[scripts/repo_refs.py](scripts/repo_refs.py) is the shared helper
+(`refs_for(owner, repo)` → `["HEAD"] + extra_refs`) every pipeline script
+now calls instead of an implicit ref-less `git log`; commits are merged
+and deduped by SHA across refs. For `compute_burst_aipct.py`, which needs
+`disclosure scan` to read the *checked-out* tree (it doesn't take a ref
+argument), each extra ref is checked out temporarily, scanned, then the
+repo is restored to its original ref — same checkout/restore pattern
+`compute_burst_loc.py` already used for historical LOC snapshots.
+
+Effect on the chart: `covid` now starts 2020-06-15 (was 2020-12-20,
+367 commits vs. 216); `ciaccona2` gained 16 commits (1,124 → 1,140);
+`music3`/`music4` and `gear` picked up smaller bumps from their own
+extra refs. Re-run order after any `extra_refs` change: `compute_bursts.py`
+→ `compute_burst_loc.py` → `lines_changed_by_day.py` →
+`merge_daily_series.py` → `compute_burst_aipct.py`, then regenerate
+`index.html`'s `data` array and `dailySeries` object from the resulting
+JSON files (no dedicated generator script exists yet — see "Open /
+unfinished work").
 
 ### LOC methodology
 
@@ -428,6 +483,24 @@ scope, just surfaced as a side effect of the Pages-API cross-check above.
    he ever asks to revisit that verdict, check for `.git` first before doing
    anything else, since this entire pipeline is useless without real commit
    history to work from.
+4. ~~Hidden-branch history was being silently dropped (HEAD-only `git
+   log`).~~ **Done 2026-10-15** — see "Hidden-branch scanning" above.
+5. ~~`parimagine`/`earthlydelights1`/`earthlydelights2` (2013-2019) ate a
+   third of the chart's horizontal space for 3 of 22 bursts.~~ **Done
+   2026-10-15** — Christophe's call ("interesting, but make the graph
+   poorly readable ... for little value"): excluded from the **chart only**
+   via a per-row `chart: false` flag in `index.html`'s `data` array, feeding
+   a derived `chartData` array that every chart-geometry calculation and
+   both `render()`/`renderPortrait()` read from. `data` itself (and Table
+   view, which reads it directly) is untouched — these three bursts are
+   still real, still in `repos.yaml`, still fully visible in Table view.
+   The chart's effective visible range now starts at `covid` (2020-06-15).
+   No generator script exists for `index.html`'s `data`/`dailySeries`
+   literals — they're assembled by hand (or an ad hoc one-off script) from
+   `scripts/bursts.json` + `burst_loc.json` + `burst_aipct.json` +
+   `project_daily_series.json` each time the pipeline is re-run; writing a
+   real generator would remove a recurring source of transcription risk if
+   this keeps happening.
 
 ## Repo / environment notes
 

@@ -23,9 +23,13 @@ GOBIN=/tmp/disclosure-bin go install github.com/chaoss/disclosure@latest)
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from repo_refs import refs_for  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 REPOS_YAML = ROOT / "repos.yaml"
@@ -49,17 +53,27 @@ def day_bounds_epoch(start_str, end_str):
     return start, end
 
 
-def commit_epochs(path):
-    out = subprocess.run(["git", "-C", str(path), "log", "--format=%H %at"],
-                          capture_output=True, text=True).stdout
+def commit_epochs(owner, repo, path):
     epochs = {}
-    for line in out.splitlines():
-        h, t = line.split(" ")
-        epochs[h] = int(t)
+    for ref in refs_for(owner, repo):
+        out = subprocess.run(["git", "-C", str(path), "log", ref, "--format=%H %at"],
+                              capture_output=True, text=True).stdout
+        for line in out.splitlines():
+            h, t = line.split(" ")
+            epochs[h] = int(t)
     return epochs
 
 
-def disclosure_confidence(path):
+def current_ref(path):
+    return subprocess.run(["git", "-C", str(path), "rev-parse", "--abbrev-ref", "HEAD"],
+                           capture_output=True, text=True).stdout.strip()
+
+
+def disclosure_confidence_at(path, ref):
+    """disclosure scan reads whatever is checked out, so a non-HEAD ref's
+    commits need that ref checked out first. Caller restores the original
+    ref afterward."""
+    subprocess.run(["git", "-C", str(path), "checkout", "--quiet", ref], capture_output=True)
     out = subprocess.run([DISCLOSURE, "scan", "--format=json", str(path)],
                           capture_output=True, text=True).stdout
     try:
@@ -69,6 +83,15 @@ def disclosure_confidence(path):
     return {c["hash"]: c["confidence"] for c in d.get("commits", [])}
 
 
+def disclosure_confidence(owner, repo, path):
+    original = current_ref(path)
+    conf = {}
+    for ref in refs_for(owner, repo):
+        conf.update(disclosure_confidence_at(path, ref))
+    subprocess.run(["git", "-C", str(path), "checkout", "--quiet", original], capture_output=True)
+    return conf
+
+
 def main():
     groups = load_groups()
     bursts_by_project = json.loads(BURSTS_JSON.read_text())
@@ -76,11 +99,14 @@ def main():
     result = {}
     for project, bursts in bursts_by_project.items():
         group = groups[project]
-        paths = [CLONES_DIR / project / e["owner"] / e["repo"] for e in group["repos"]]
+        repo_entries = [(e["owner"], e["repo"]) for e in group["repos"]]
+        paths = [CLONES_DIR / project / o / r for o, r in repo_entries]
 
         # one full-history scan per repo, shared across all of this project's bursts
-        epochs_by_path = {p: commit_epochs(p) for p in paths}
-        confidence_by_path = {p: disclosure_confidence(p) for p in paths}
+        epochs_by_path = {CLONES_DIR / project / o / r: commit_epochs(o, r, CLONES_DIR / project / o / r)
+                           for o, r in repo_entries}
+        confidence_by_path = {CLONES_DIR / project / o / r: disclosure_confidence(o, r, CLONES_DIR / project / o / r)
+                               for o, r in repo_entries}
 
         names = [project] if len(bursts) == 1 else [f"{project}{i+1}" for i in range(len(bursts))]
         for burst_name, burst in zip(names, bursts):

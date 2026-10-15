@@ -23,6 +23,9 @@ from pathlib import Path
 
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from repo_refs import refs_for  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 REPOS_YAML = ROOT / "repos.yaml"
 CLONES_DIR = ROOT / "clones"
@@ -42,16 +45,17 @@ def load_groups():
     return [g for g in data["groups"] if g["status"] == "include"]
 
 
-def get_epochs(paths):
+def get_epochs(repos):
     epochs = {}
-    for path in paths:
-        out = subprocess.run(["git", "-C", str(path), "log", "--format=%H %at"],
-                              capture_output=True, text=True).stdout
-        for line in out.splitlines():
-            parts = line.split(" ")
-            if len(parts) == 2:
-                h, t = parts
-                epochs[h] = int(t)
+    for owner, repo, path in repos:
+        for ref in refs_for(owner, repo):
+            out = subprocess.run(["git", "-C", str(path), "log", ref, "--format=%H %at"],
+                                  capture_output=True, text=True).stdout
+            for line in out.splitlines():
+                parts = line.split(" ")
+                if len(parts) == 2:
+                    h, t = parts
+                    epochs[h] = int(t)
     return sorted(epochs.values())
 
 
@@ -76,8 +80,8 @@ def main():
     total_bursts = 0
     for group in groups:
         name = group["name"]
-        paths = [CLONES_DIR / name / e["owner"] / e["repo"] for e in group["repos"]]
-        epochs = get_epochs(paths)
+        repos = [(e["owner"], e["repo"], CLONES_DIR / name / e["owner"] / e["repo"]) for e in group["repos"]]
+        epochs = get_epochs(repos)
         if not epochs:
             print(f"{name:<22} NO COMMITS FOUND -- skipping")
             continue

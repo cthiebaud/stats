@@ -27,6 +27,7 @@ CLONES_DIR = ROOT / "clones"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from manual_excludes import MANUAL_EXCLUDES  # noqa: E402
+from repo_refs import refs_for  # noqa: E402
 
 # XML added 2026-10-15: bwv543's MusicXML score files play the same "content,
 # not code" role SVG already plays for every other bwv/ciaccona repo -- same
@@ -85,21 +86,24 @@ def day_of(epoch):
     return datetime.fromtimestamp(epoch, timezone.utc).strftime("%Y-%m-%d")
 
 
-def repo_daily_series(path, allowed_tokens, manual_exclude_globs):
-    """{date: lines_changed} for one repo, HEAD history, cloc-filtered."""
+def commit_changes(path, ref, allowed_tokens, manual_exclude_globs):
+    """{hash: (epoch, lines_changed)} for one ref's history, cloc-filtered."""
     out = subprocess.run(
-        ["git", "-C", str(path), "log", "--format=COMMIT\t%H\t%at", "--numstat"],
+        ["git", "-C", str(path), "log", ref, "--format=COMMIT\t%H\t%at", "--numstat"],
         capture_output=True, text=True,
     ).stdout
 
-    daily = defaultdict(int)
+    changes = {}
+    current_hash = None
     current_epoch = None
     for line in out.splitlines():
         if line.startswith("COMMIT\t"):
-            _, _h, t = line.split("\t")
+            _, h, t = line.split("\t")
+            current_hash = h
             current_epoch = int(t)
+            changes[current_hash] = (current_epoch, 0)
             continue
-        if not line.strip() or current_epoch is None:
+        if not line.strip() or current_hash is None:
             continue
         m = NUMSTAT_RE.match(line)
         if not m:
@@ -109,7 +113,22 @@ def repo_daily_series(path, allowed_tokens, manual_exclude_globs):
             continue  # binary file, cloc wouldn't count it either
         if not is_counted(path_field, allowed_tokens, manual_exclude_globs):
             continue
-        daily[day_of(current_epoch)] += int(added) + int(deleted)
+        epoch, total = changes[current_hash]
+        changes[current_hash] = (epoch, total + int(added) + int(deleted))
+
+    return changes
+
+
+def repo_daily_series(owner, repo, path, allowed_tokens, manual_exclude_globs):
+    """{date: lines_changed} for one repo, across HEAD + any curated extra_refs,
+    deduped by commit hash, cloc-filtered."""
+    changes = {}
+    for ref in refs_for(owner, repo):
+        changes.update(commit_changes(path, ref, allowed_tokens, manual_exclude_globs))
+
+    daily = defaultdict(int)
+    for epoch, lines in changes.values():
+        daily[day_of(epoch)] += lines
 
     return dict(sorted(daily.items()))
 
@@ -126,7 +145,7 @@ def main():
             owner, repo = entry["owner"], entry["repo"]
             path = CLONES_DIR / group["name"] / owner / repo
             key = f"{owner}/{repo}"
-            series = repo_daily_series(path, allowed_tokens, MANUAL_EXCLUDES.get(key, []))
+            series = repo_daily_series(owner, repo, path, allowed_tokens, MANUAL_EXCLUDES.get(key, []))
             result[group["name"]][key] = series
             total = sum(series.values())
             print(f"  {group['name']:<20} {key:<45} days_with_activity={len(series):<5} total_lines_changed={total}")
