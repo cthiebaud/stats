@@ -115,8 +115,38 @@
     margin: 0 0 8px;
   }
 
+  #about summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  /* Desktop: always-expanded, no visible toggle -- same look as before this
+     was wrapped in <details>. Mobile (see below) shows the summary and
+     defaults to collapsed, set via JS (details.open), since "leave out any
+     text" was specifically about small screens, not a universal change.
+     "Mobile" is judged by the SMALLER of width/height (matches isMobileSize()
+     in the script) so a landscape phone -- wide but short -- still counts;
+     width alone would miss it. (min-width:641px) AND (min-height:641px) is
+     the exact negation of the mobile query below. */
+  @media (min-width: 641px) and (min-height: 641px) {
+    #about summary { display: none; }
+  }
+
   svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: none; cursor: grab; }
   svg:active { cursor: grabbing; }
+
+  /* Mobile: no custom wheel/drag zoom (it fights the page's own scroll/pinch
+     gesture on a touchscreen) -- restore native touch behavior, and hide the
+     desktop-only zoom controls/hint that no longer apply. Portrait additionally
+     gets a transposed chart (time runs vertically); see renderPortrait() in
+     the script -- landscape keeps the normal horizontal layout, just at full
+     extent with no zoom UI. The (max-width) / (max-height) OR is exactly
+     "smaller dimension <= 640px", matching isMobileSize() in the script. */
+  @media (max-width: 640px), (max-height: 640px) {
+    svg { touch-action: auto; cursor: default; }
+    #resetZoomBtn, #maximizeBtn, #zoomhint { display: none; }
+  }
   .gridline { stroke: var(--gridline); stroke-width: 1; }
   .baseline { stroke: var(--baseline); stroke-width: 1; }
   .tick-label { fill: var(--text-muted); font-size: 11px; }
@@ -378,6 +408,19 @@
   const fullMinDay = Math.min.apply(null, data.map(function (d) { return d.dayStart; })) - 30;
   const fullMaxDay = Math.max.apply(null, data.map(function (d) { return d.dayEnd; })) + 30;
   function xFull(day) { return marginLeft + plotW * (day - fullMinDay) / (fullMaxDay - fullMinDay); }
+
+  // ---- mobile detection: narrow screens get collapsed text (see #about)
+  // and no custom zoom (it fights the page's own scroll/pinch on a
+  // touchscreen); portrait additionally gets a transposed chart, since a
+  // 13-year timeline fits a tall narrow screen far better running vertically
+  // than squeezed into its width. Landscape mobile keeps the normal
+  // horizontal layout, just at full extent with no zoom UI.
+  // Checks the SMALLER of width/height, not width alone: a phone in
+  // landscape (e.g. 844x390) has width above most reasonable breakpoints but
+  // is exactly as touch-constrained as portrait -- confirmed this matters
+  // (an 844-wide landscape test rendered as if it were desktop before this).
+  function isMobileSize() { return Math.min(window.innerWidth, window.innerHeight) <= 640; }
+  function isPortraitOrientation() { return window.matchMedia("(orientation: portrait)").matches; }
 
   // ---- geometry: W/plotW/label-lanes/plotH/H all depend on the container's
   // actual rendered size, which can now change (no fixed max-width; a
@@ -650,6 +693,132 @@
     });
   }
 
+  // ---- mobile portrait: transposed layout -- time runs top-to-bottom
+  // (full 13-year range always, no zoom UI -- native page scroll handles
+  // navigation), scope/day runs left-to-right. Reuses computeBars() (passed
+  // the full range as its "view", same bucket-sizing math as normal mode's
+  // full-zoom-out state) and the same color/thickness/icon helpers; only the
+  // coordinate mapping and layout differ from render().
+  function renderPortrait() {
+    svg.innerHTML = "";
+    W = containerWidth();
+
+    const marginTopP = 26, marginBottomP = 20, marginLeftP = 10, marginRightP = 14;
+    const PX_PER_DAY = 0.5;
+    const plotHeightP = (fullMaxDay - fullMinDay) * PX_PER_DAY;
+    function yP(day) { return marginTopP + (day - fullMinDay) * PX_PER_DAY; }
+
+    const plotLeftP = marginLeftP;
+    const plotRightP = W - marginRightP;
+    const valueAxisWP = plotRightP - plotLeftP;
+    function xP(v) { return plotLeftP + valueAxisWP * (v / niceMax); }
+
+    H = marginTopP + plotHeightP + marginBottomP;
+    plotTop = marginTopP; plotH = plotHeightP; plotW = valueAxisWP;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+
+    // value-axis gridlines (now vertical), ticks along the top
+    const steps = 4;
+    for (let i = 0; i <= steps; i++) {
+      const v = (niceMax / steps) * i;
+      const xx = xP(v);
+      svg.appendChild(el("line", { x1: xx, x2: xx, y1: marginTopP, y2: H - marginBottomP, class: "gridline" }));
+      const t = el("text", { x: xx, y: marginTopP - 8, class: "tick-label", "text-anchor": "middle" });
+      t.textContent = v.toFixed(2);
+      svg.appendChild(t);
+    }
+    svg.appendChild(el("line", { x1: xP(0), x2: xP(0), y1: marginTopP, y2: H - marginBottomP, class: "baseline" }));
+
+    // time-axis gridlines (now horizontal), year labels on the left
+    const firstYear = Math.ceil(fullMinDay / 365.25) + 1969;
+    const lastYear = Math.floor(fullMaxDay / 365.25) + 1970;
+    for (let yr = firstYear; yr <= lastYear; yr++) {
+      const day = Math.floor(Date.UTC(yr, 0, 1) / 86400000);
+      if (day < fullMinDay || day > fullMaxDay) continue;
+      const yy = yP(day);
+      svg.appendChild(el("line", { x1: plotLeftP, x2: plotRightP, y1: yy, y2: yy, class: "gridline" }));
+      const t = el("text", { x: plotLeftP, y: yy - 4, class: "tick-label", "text-anchor": "start" });
+      t.textContent = String(yr);
+      svg.appendChild(t);
+    }
+
+    // simple sequential nudge-down to avoid label collisions -- the lane
+    // system from render() packed into horizontal rows at a fixed top area;
+    // here labels are scattered down the full scroll length, so a cheap
+    // greedy vertical nudge against already-placed labels is enough
+    const placedLabels = [];
+    const LABEL_ROW_H = 12;
+
+    data.slice().sort(function (a, b) { return a.dayStart - b.dayStart; }).forEach(function (d) {
+      const xAnchor = xP(d.scopePerDay);
+      const y1 = yP(d.dayStart), y2 = Math.max(yP(d.dayEnd), y1 + 2);
+      const sw = thickness(d.commits);
+
+      const g = el("g", { class: "bar" });
+      svg.appendChild(g);
+
+      // vertical track at the original commit-count thickness
+      g.appendChild(el("line", {
+        x1: xAnchor, y1: y1, x2: xAnchor, y2: y2, stroke: d.color,
+        "stroke-width": sw, "stroke-linecap": "round", opacity: "0.22",
+      }));
+
+      // per-day bars, sqrt-scaled, extending rightward from the anchor
+      const info = computeBars(d, fullMinDay, fullMaxDay);
+      const maxBarPxP = 26;
+      if (info && info.bars.length) {
+        info.bars.forEach(function (b) {
+          if (b.value <= 0) return;
+          const by1 = yP(b.bStart), by2 = yP(b.bEnd);
+          const h = Math.max(0.6, by2 - by1 - Math.min(1, (by2 - by1) * 0.15));
+          const w = info.peak > 0 ? Math.max(1.2, maxBarPxP * Math.sqrt(b.value / info.peak)) : 0;
+          g.appendChild(el("rect", { x: xAnchor, y: by1, width: w, height: h, fill: d.color }));
+        });
+      }
+
+      // label, nudged down if it collides with an already-placed one
+      let labelY = y1 - 4;
+      const probe = el("text", { x: -9999, y: -9999, class: "name-label" });
+      probe.textContent = d.name;
+      svg.appendChild(probe);
+      const textW = probe.getComputedTextLength();
+      svg.removeChild(probe);
+      const labelX1 = xAnchor + 4, labelX2 = labelX1 + textW + (d.site ? 16 : 0);
+      while (placedLabels.some(function (p) { return Math.abs(p.y - labelY) < LABEL_ROW_H && p.x1 < labelX2 && labelX1 < p.x2; })) {
+        labelY += LABEL_ROW_H;
+      }
+      placedLabels.push({ x1: labelX1, x2: labelX2, y: labelY });
+
+      const nameLbl = el("text", { x: labelX1, y: labelY, class: "name-label", "text-anchor": "start", fill: d.color });
+      nameLbl.textContent = d.name;
+      if (d.site) {
+        const link = el("a", { href: d.site, target: "_blank", rel: "noopener noreferrer", class: "site-link" });
+        link.appendChild(nameLbl);
+        g.appendChild(link);
+        link.appendChild(externalLinkIcon(labelX1 + textW + 4, labelY - 9, 10, d.color));
+      } else {
+        g.appendChild(nameLbl);
+      }
+    });
+  }
+
+  // ---- dispatcher: picks normal vs. portrait layout, and keeps mobile
+  // pinned to the full time range (no zoom UI there) ----
+  function renderAll() {
+    const mobile = isMobileSize();
+    aboutDetails.open = !mobile;
+    if (mobile) {
+      viewMinDay = fullMinDay;
+      viewMaxDay = fullMaxDay;
+    }
+    if (mobile && isPortraitOrientation()) {
+      renderPortrait();
+    } else {
+      rebuildGeometry();
+      render();
+    }
+  }
+
   // ---- zoom (wheel) / pan (drag) / reset (dblclick + button) ----
   let rafPending = false;
   function requestRender() {
@@ -659,6 +828,7 @@
   }
 
   svg.addEventListener("wheel", function (evt) {
+    if (isMobileSize()) return; // let native pinch/scroll handle navigation
     evt.preventDefault();
     const rectBox = svg.getBoundingClientRect();
     const scale = W / rectBox.width;
@@ -685,6 +855,7 @@
   let dragging = false, dragArmed = false, dragStartX = 0, dragStartY = 0, dragStartMin = 0, dragStartMax = 0;
   const DRAG_THRESHOLD_PX = 4;
   svg.addEventListener("pointerdown", function (evt) {
+    if (isMobileSize()) return; // let native touch-scroll handle navigation
     if (evt.target.closest && evt.target.closest("a")) return;
     dragArmed = true;
     dragging = false;
@@ -715,7 +886,10 @@
   svg.addEventListener("pointerup", endDrag);
   svg.addEventListener("pointercancel", endDrag);
 
-  function resetZoom() { viewMinDay = fullMinDay; viewMaxDay = fullMaxDay; requestRender(); }
+  function resetZoom() {
+    if (isMobileSize()) return;
+    viewMinDay = fullMinDay; viewMaxDay = fullMaxDay; requestRender();
+  }
   svg.addEventListener("dblclick", resetZoom);
   document.getElementById("resetZoomBtn").addEventListener("click", resetZoom);
 
@@ -726,32 +900,33 @@
   // rendered size genuinely changes, not just its visual scale.
   const cardEl = document.getElementById("card");
   const maximizeBtn = document.getElementById("maximizeBtn");
+  const aboutDetails = document.getElementById("about");
   function setMaximized(on) {
     maximized = on;
     cardEl.classList.toggle("maximized", maximized);
     maximizeBtn.textContent = maximized ? "Restore graph" : "Maximize graph";
-    rebuildGeometry();
-    render();
+    renderAll();
   }
   maximizeBtn.addEventListener("click", function () { setMaximized(!maximized); });
   window.addEventListener("keydown", function (evt) {
     if (evt.key === "Escape" && maximized) setMaximized(false);
   });
 
-  // ---- react to the container actually changing size (window resize) ----
+  // ---- react to the container actually changing size (window resize,
+  // mobile orientation change) ----
   let resizePending = false;
-  window.addEventListener("resize", function () {
+  function onResize() {
     if (resizePending) return;
     resizePending = true;
     requestAnimationFrame(function () {
       resizePending = false;
-      rebuildGeometry();
-      render();
+      renderAll();
     });
-  });
+  }
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", onResize);
 
-  rebuildGeometry();
-  render();
+  renderAll();
 
   // ---- table view ----
   const table = document.getElementById("dataTable");
