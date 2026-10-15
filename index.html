@@ -218,25 +218,22 @@
         burst of real activity &mdash; not each whole project &mdash; is its own row (a 120-day idle gap splits
         one; a single-day blip of 1&ndash;3 commits is dropped as noise, not drawn). Commits/day jumps roughly
         2&ndash;4&times; exactly where Claude Code <em>agentic</em> commit attribution appears (bwv2, mundial,
-        gear) &mdash; most visibly in bwv, where a tiny 2022 scaffold (bwv1, 23 commits, 22 LOC) and a 2025
-        rewrite (bwv2, 662 commits, 13,026 LOC) sit three years apart in the same repo but are, in every way
-        that matters here, two different projects.
+        gear) &mdash; most visibly in bwv, where a tiny 2022 scaffold (bwv1, 23 commits, 22 LOC, 0% AI-attributed)
+        and a 2025 rewrite (bwv2, 662 commits, 13,026 LOC) sit three years apart in the same repo but are, in
+        every way that matters here, two different projects.
       </p>
       <div class="legend" id="legend"></div>
       <div class="foot">
         <strong>Reading this honestly:</strong> a burst's LOC is NOT a current snapshot &mdash; it's that
         project's LOC (cloc, excluding SVG/JSON/YAML/CSV/XML, plus manually-excluded vendor libraries and
         generated/data-dump files) as of the end of that specific burst, computed by checking out each
-        contributing repo's last commit at or before the burst's end date. AI-attribution % is measured with
+        contributing repo's last commit at or before the burst's end date. AI-attribution % is measured per
+        burst (each burst's own commit range, not a project-wide blend) with
         <a href="https://github.com/chaoss/disclosure" target="_blank" rel="noopener">chaoss/disclosure</a>
         (committer emails, co-author trailers, tool mentions for Claude Code, Cursor, Copilot, ChatGPT, Aider)
         &mdash; it only catches disclosed, git-level traces, so chat-based AI use with no trailer or tool
         mention left in the repo (manually typed or pasted) is invisible to it, and true involvement may be
-        higher than shown, especially before mid-2025. It is also measured per <em>project</em>, not per
-        burst &mdash; every burst of a multi-burst project currently shows its parent's one blended value, so
-        bwv1 (2022, long before Claude Code existed) displays the same 3.4% as bwv2 (2025) only because they
-        share that average. Treat any multi-burst project's AI-attribution % as approximate until it's
-        re-measured per burst.
+        higher than shown, especially before mid-2025.
       </div>
     </details>
 
@@ -281,33 +278,32 @@
   // specific burst (checkout each contributing repo's last commit at or
   // before the burst's end date, cloc it, sum -- scripts/compute_burst_loc.py),
   // so bwv1's 22 and bwv2's 13,026 are genuinely different points in time,
-  // not one blended total. aiPct is NOT re-measured per burst -- the
-  // `disclosure` tool that produces it isn't installed in this environment
-  // right now, so every burst inherits its parent project's one project-wide
-  // value. This is the one place a burst split is known to mislead: bwv1
-  // (2022, long before Claude Code existed) shows the same 3.4% as bwv2
-  // (2025) only because they share a parent average -- see the footer note.
+  // not one blended total. aiPct IS measured per burst (each burst's own
+  // commit range via `disclosure scan`, not a project-wide blend --
+  // scripts/compute_burst_aipct.py) -- confirmed this matters: bwv1 (2022,
+  // predates Claude Code) is 0%, not the old blended-project 3.4% that
+  // bwv2 alone earns.
   const data = [
     { name: "parimagine", project: "parimagine", start: "2013-04-28", end: "2013-11-25", commits: 173, activeDays: 210.6, loc: 3261, aiPct: 0, site: "https://dev.parimagine.fr" },
     { name: "earthlydelights1", project: "earthlydelights", start: "2016-01-16", end: "2016-09-01", commits: 208, activeDays: 228.6, loc: 3060, aiPct: 0, site: null },
     { name: "earthlydelights2", project: "earthlydelights", start: "2017-01-21", end: "2019-04-12", commits: 27, activeDays: 810.7, loc: 3115, aiPct: 0, site: null },
     { name: "covid", project: "covid", start: "2020-12-20", end: "2021-05-13", commits: 216, activeDays: 144.3, loc: 11994, aiPct: 0, site: null },
-    { name: "music1", project: "music", start: "2021-02-04", end: "2021-05-06", commits: 62, activeDays: 90.8, loc: 1278, aiPct: null, site: "https://music.cthiebaud.com" },
+    { name: "music1", project: "music", start: "2021-02-04", end: "2021-05-06", commits: 62, activeDays: 90.8, loc: 1278, aiPct: 0, site: "https://music.cthiebaud.com" },
     { name: "sangiosleague", project: "sangiosleague", start: "2021-07-20", end: "2021-09-22", commits: 242, activeDays: 63.4, loc: 1352, aiPct: 0, site: null },
     { name: "sangiovannilipioni", project: "sangiovannilipioni", start: "2021-08-09", end: "2021-12-23", commits: 134, activeDays: 136.1, loc: 4810, aiPct: 0, site: null },
-    { name: "ciaccona1", project: "ciaccona", start: "2021-11-28", end: "2021-12-22", commits: 91, activeDays: 24.5, loc: 20, aiPct: 0.5, site: "https://ciaccona.cthiebaud.com" },
-    { name: "bwv1", project: "bwv", start: "2022-04-01", end: "2022-05-06", commits: 23, activeDays: 35.0, loc: 22, aiPct: 3.4, site: "https://bwv.cthiebaud.com" },
+    { name: "ciaccona1", project: "ciaccona", start: "2021-11-28", end: "2021-12-22", commits: 91, activeDays: 24.5, loc: 20, aiPct: 0, site: "https://ciaccona.cthiebaud.com" },
+    { name: "bwv1", project: "bwv", start: "2022-04-01", end: "2022-05-06", commits: 23, activeDays: 35.0, loc: 22, aiPct: 0, site: "https://bwv.cthiebaud.com" },
     { name: "ciaccona2", project: "ciaccona", start: "2023-03-16", end: "2023-07-09", commits: 1124, activeDays: 114.9, loc: 20624, aiPct: 0.5, site: "https://ciaccona.cthiebaud.com" },
-    { name: "bookshelves", project: "bookshelves", start: "2023-10-22", end: "2024-02-23", commits: 495, activeDays: 123.8, loc: 4307, aiPct: 0.9, site: "https://bookshelves.cthiebaud.com" },
-    { name: "ciaccona3", project: "ciaccona", start: "2023-12-11", end: "2024-01-07", commits: 38, activeDays: 27.2, loc: 20936, aiPct: 0.5, site: "https://ciaccona.cthiebaud.com" },
+    { name: "bookshelves", project: "bookshelves", start: "2023-10-22", end: "2024-02-23", commits: 495, activeDays: 123.8, loc: 4307, aiPct: 0.8, site: "https://bookshelves.cthiebaud.com" },
+    { name: "ciaccona3", project: "ciaccona", start: "2023-12-11", end: "2024-01-07", commits: 38, activeDays: 27.2, loc: 20936, aiPct: 0, site: "https://ciaccona.cthiebaud.com" },
     { name: "aletheia", project: "aletheia", start: "2024-01-01", end: "2024-04-15", commits: 646, activeDays: 105.0, loc: 5825, aiPct: 0.2, site: "https://aletheia.cthiebaud.com" },
-    { name: "music2", project: "music", start: "2024-01-13", end: "2024-02-16", commits: 80, activeDays: 34.1, loc: 1599, aiPct: null, site: "https://music.cthiebaud.com" },
-    { name: "music3", project: "music", start: "2024-11-12", end: "2025-07-19", commits: 12, activeDays: 249.0, loc: 1620, aiPct: null, site: "https://music.cthiebaud.com" },
-    { name: "ciaccona4", project: "ciaccona", start: "2024-12-08", end: "2025-02-24", commits: 24, activeDays: 78.1, loc: 20538, aiPct: 0.5, site: "https://ciaccona.cthiebaud.com" },
-    { name: "bwv2", project: "bwv", start: "2025-05-19", end: "2025-07-12", commits: 662, activeDays: 53.7, loc: 13026, aiPct: 3.4, site: "https://bwv.cthiebaud.com" },
-    { name: "mundial", project: "mundial", start: "2026-06-05", end: "2026-07-27", commits: 1358, activeDays: 52.3, loc: 24950, aiPct: 66.6, site: "https://mundial.cthiebaud.com" },
+    { name: "music2", project: "music", start: "2024-01-13", end: "2024-02-16", commits: 80, activeDays: 34.1, loc: 1599, aiPct: 0, site: "https://music.cthiebaud.com" },
+    { name: "music3", project: "music", start: "2024-11-12", end: "2025-07-19", commits: 12, activeDays: 249.0, loc: 1620, aiPct: 0, site: "https://music.cthiebaud.com" },
+    { name: "ciaccona4", project: "ciaccona", start: "2024-12-08", end: "2025-02-24", commits: 24, activeDays: 78.1, loc: 20538, aiPct: 0, site: "https://ciaccona.cthiebaud.com" },
+    { name: "bwv2", project: "bwv", start: "2025-05-19", end: "2025-07-12", commits: 662, activeDays: 53.7, loc: 13026, aiPct: 1.7, site: "https://bwv.cthiebaud.com" },
+    { name: "mundial", project: "mundial", start: "2026-06-05", end: "2026-07-27", commits: 1358, activeDays: 52.3, loc: 24950, aiPct: 61.2, site: "https://mundial.cthiebaud.com" },
     { name: "gear", project: "gear", start: "2026-08-24", end: "2026-09-12", commits: 54, activeDays: 18.6, loc: 3065, aiPct: 64.8, site: "https://gear.cthiebaud.com" },
-    { name: "music4", project: "music", start: "2026-09-23", end: "2026-10-13", commits: 72, activeDays: 20.0, loc: 5068, aiPct: null, site: "https://music.cthiebaud.com" },
+    { name: "music4", project: "music", start: "2026-09-23", end: "2026-10-13", commits: 72, activeDays: 20.0, loc: 5068, aiPct: 1.4, site: "https://music.cthiebaud.com" },
   ];
 
   // Per-day lines-changed (added+deleted) for cloc-passing files, merged
@@ -366,9 +362,9 @@
   // time-ordered indices land far apart in hue and stay that way for many steps -
   // the standard low-discrepancy trick for "spread N points, neighbors maximally
   // separated" (same principle as phyllotaxis/sunflower seed placement).
-  // Lightness darkens with AI-attribution % (per burst, not per project, so
-  // once aiPct is re-measured per burst two episodes of the same project can
-  // still visibly differ in shade even though they share a hue).
+  // Lightness darkens with AI-attribution % (measured per burst, not per
+  // project, so two episodes of the same project can visibly differ in
+  // shade even though they share a hue -- e.g. bwv1 at 0% vs bwv2 at 1.7%).
   const L_LIGHT = 68;
   const L_DARK = 32;
   const SAT = 62;
@@ -399,7 +395,7 @@
   const legend = document.getElementById("legend");
   const note = document.createElement("div");
   note.className = "legend-item";
-  note.textContent = "One hue per burst — darker shade = more AI-attributed commits — circle size = LOC at the end of the burst";
+  note.textContent = "One hue per project — darker shade = more AI-attributed commits (per burst) — circle size = LOC at the end of the burst";
   legend.appendChild(note);
 
   // ---- chart geometry ----
