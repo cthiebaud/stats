@@ -79,4 +79,10 @@ MANUAL_EXCLUDES = {
     "cthiebaud/vinyl": [
         "fontello/demo.html",  # Fontello icon-font kit's auto-generated demo page (embeds vendored Bootstrap 2.2.1 CSS inline)
     ],
+    "cthiebaud/klam": [
+        "pianos/lilyponds/verbs.txt",  # external tool's menu-verb/command reference list, not his content
+    ],
+    "cthiebaud/openmozart.net": [
+        "static/js/close-pixelate.js",  # vendored, header credits "Developed by David DeSandro"
+    ],
 }

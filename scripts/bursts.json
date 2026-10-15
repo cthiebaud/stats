@@ -133,6 +133,24 @@
       "commits_per_day": 2.897
     }
   ],
+  "klam": [
+    {
+      "start": "2021-09-14",
+      "end": "2021-11-09",
+      "commits": 41,
+      "active_days": 56.2,
+      "commits_per_day": 0.73
+    }
+  ],
+  "openmozart": [
+    {
+      "start": "2021-09-18",
+      "end": "2021-10-09",
+      "commits": 263,
+      "active_days": 21.2,
+      "commits_per_day": 12.432
+    }
+  ],
   "music": [
     {
       "start": "2021-02-04",

@@ -99,6 +99,18 @@ def main():
         commits_cache = {key: commit_list(path) for key, path in paths.items()}
         original_refs = {key: current_ref(path) for key, path in paths.items()}
 
+        # A repo that stops receiving commits partway through a multi-burst
+        # project (e.g. cthiebaud/ciaccona, frozen since 2023-05-24 once
+        # musicollator/ciaccona took over) was being re-counted in FULL
+        # toward every later burst's LOC -- the same static snapshot added
+        # again and again, since "latest commit at or before cutoff"
+        # resolves to the same frozen SHA every time. Fixed by only
+        # re-running checkout+cloc when a repo's resolved SHA has actually
+        # changed since the last burst it contributed to (bursts are
+        # processed in chronological order, same order compute_bursts.py
+        # emitted them) -- a frozen repo's LOC counts once, in the first
+        # burst after it stops moving, not forever after.
+        last_counted_sha = {}
         names = [project] if len(bursts) == 1 else [f"{project}{i+1}" for i in range(len(bursts))]
         for burst_name, burst in zip(names, bursts):
             cutoff = day_end_epoch(burst["end"])
@@ -108,6 +120,10 @@ def main():
                 sha = latest_at_or_before(commits_cache[key], cutoff)
                 if sha is None:
                     continue  # repo didn't exist yet as of this burst's end
+                if sha == last_counted_sha.get(key):
+                    contributing.append(f"{key}@{sha[:7]}=(unchanged, not re-counted)")
+                    continue
+                last_counted_sha[key] = sha
                 subprocess.run(["git", "-C", str(path), "checkout", "--quiet", "--detach", sha],
                                 capture_output=True)
                 loc = cloc_at(path, key)

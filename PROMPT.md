@@ -82,6 +82,30 @@ burst) but is the only way to make `bwv1`'s 22 LOC and `bwv2`'s 13,026 LOC
 show up as genuinely different points in time rather than one blended
 total.
 
+**Fixed a real double-counting bug in this, 2026-10-15**: when a project has
+a contributing repo that stops receiving commits partway through (e.g.
+`cthiebaud/ciaccona`, frozen since 2023-05-24 once `musicollator/ciaccona`
+took over), "that repo's latest commit at-or-before the cutoff" resolves to
+the *same* frozen SHA for every later burst — so its full static snapshot
+was getting re-added to every subsequent burst's LOC total, not just the
+first one after the freeze. Caught by Christophe noticing `ciaccona3`'s
+LOC/day (769.7) was wildly out of line with everything else, and its
+end-LOC (20,936) was suspiciously close to `ciaccona2`'s (20,624) despite
+38 commits over 27 days vs. 1,124 commits over 115 — his hypothesis was
+"probably a copy of ciaccona2," which turned out not to be quite right
+(the actual commits in that window are genuine small edits, 6 new
+performers added) but correctly flagged that *something* was wrong.
+Fixed by tracking each repo's already-counted SHA per project, across
+bursts in chronological order, and only re-running checkout+cloc when that
+SHA has actually changed since the last burst — a frozen repo's LOC now
+counts once, in the first burst after it stops moving, not forever after.
+`ciaccona3` went from 20,936 to 11,941; `ciaccona4` from 20,538 to 11,543.
+The same general fix also caught an analogous case in `music`
+(`cthiebaud/vinyl` stopped changing after `music2`; `music3`/`music4` had
+been re-counting it too — 1,620→337 and 5,068→3,785 respectively). If a
+future burst's LOC/day looks implausible relative to its neighbors, this
+exact mechanism is the first thing to check.
+
 **Color**: one hue per **project** (not per burst — see "Color assignment"
 below, same golden-angle method as before, now stepping through unique
 projects instead of individual rows), so a multi-burst project's rows still
@@ -227,34 +251,58 @@ AI-attribution shows a visible step, rather than needing to approach 100%).
 
 ## Projects in scope, and why others aren't
 
-Final 12 (not 11 — see "music" below): **parimagine, earthlydelights, covid,
-sangiosleague, sangiovannilipioni, ciaccona, bookshelves, aletheia, bwv,
-mundial, gear, music.** These 12 now split into **20 bursts** in the current
-chart (see "The burst redesign" above) — e.g. `bwv` → `bwv1` + `bwv2`,
-`ciaccona` → `ciaccona1..4`. The full repo-to-group mapping, including every
-repo's `status` (`include`/`exclude`) and the reasoning behind each, is the
-**canonical source of truth** in [repos.yaml](repos.yaml) — don't re-derive
-this list from memory, read the file. It also carries each included
-project's live public site URL (`site:` field, `null` where none is live —
-checked against GitHub's own Pages API, not just DNS, since a domain can
-resolve without actually being *your* content anymore, see "music" below
-for one real example of exactly that).
+Final 14: **parimagine, earthlydelights, covid, sangiosleague,
+sangiovannilipioni, ciaccona, bookshelves, aletheia, bwv, mundial, gear,
+music, klam, openmozart.** These 14 now split into **22 bursts** in the
+current chart (see "The burst redesign" above) — e.g. `bwv` → `bwv1` +
+`bwv2`, `ciaccona` → `ciaccona1..4`. The full repo-to-group mapping,
+including every repo's `status` (`include`/`exclude`) and the reasoning
+behind each, is the **canonical source of truth** in
+[repos.yaml](repos.yaml) — don't re-derive this list from memory, read the
+file. It also carries each included project's live public site URL
+(`site:` field, `null` where none is live — checked against GitHub's own
+Pages API, not just DNS, since a domain can resolve without actually being
+*your* content anymore, see "music" below for one real example of exactly
+that).
 
-**`music` was added as the 12th project mid-session on 2026-10-15**,
-reversing an earlier exclusion ("too tiny") — merging in `cthiebaud/vinyl`
-gave the combined group enough scope to count. If you find older notes
-anywhere saying "11 projects" or listing `music` as excluded, those are
-stale; `repos.yaml` is correct.
+**`music` was added mid-session on 2026-10-15**, reversing an earlier
+exclusion ("too tiny") — merging in `cthiebaud/vinyl` gave the combined
+group enough scope to count. **`klam` and `openmozart` were added the same
+day, by a different route**: once the chart became burst-based, "too tiny
+as a whole project" stopped being the right question for a project that was
+excluded purely on size — both have one real, substantial burst (checked
+against authorship and vendor-content confounds the same way every other
+repo is), bigger than the smallest burst already in the chart. The
+**sibling investigation of `openricard`** found an even more intense burst
+(27.1 commits/day, the most intense of any excluded repo) but it was **not**
+added — Christophe's call, the "joke project" verdict stands despite the
+burst intensity; don't re-add without asking again. **`emugnier`'s original
+"too tiny" reasoning was simply wrong** — it has a real, substantial burst
+too, but turned out to be the "Mugnier & Thiebaud" joint site already
+excluded under the `mugnierandthiebaud` org, which is the actual reason it
+stays out. If you find older notes anywhere saying "11 projects" or "12
+projects," or listing `klam`/`openmozart` as excluded, those are stale;
+`repos.yaml` is correct.
+
+**The lesson generalized**: "too tiny/not worth it" was always a
+whole-*project* verdict. Once the chart's unit became the burst, that
+verdict needed re-checking for every repo excluded on size grounds — some
+reversed (`klam`, `openmozart`), one didn't despite a strong burst
+(`openricard`, excluded for a different reason entirely), and one revealed
+its *real* exclusion reason had never been "too tiny" at all (`emugnier`).
+Exclusions grounded in something other than size (infra/meta, joke intent,
+professional/course work, forked/not-his-authorship, sites built for other
+people) don't automatically get revisited just because the unit changed —
+check what the *actual* reason was before assuming burst reframing applies.
 
 Explicitly excluded, per Christophe's direct instructions — don't re-add
 without asking (see `repos.yaml` for the complete list with reasons;
 highlights):
-- **iroif, aequologica, cthiebaud.github.io** — not true "projects" (infrastructure/meta)
-- **openricard** — a joke project
-- **klam** — too tiny
-- **openmozart** — too tiny
-- **hat** — a professional assignment, not hobby work
-- **athenaeum** (the whole `athenaeum-brew` org) — a side project done *on* a professional course, not hobby
+- **iroif, aequologica, cthiebaud.github.io** — not true "projects" (infrastructure/meta); re-checked 2026-10-15 under the burst model, all three have real bursts but the infra/meta nature is unaffected by that
+- **openricard** — a joke project; re-investigated 2026-10-15 (see above), not added
+- **emugnier** — the "Mugnier & Thiebaud" joint site, same as the `mugnierandthiebaud` org (not actually "too tiny," see above)
+- **hat** — a professional assignment, not hobby work. **Confirmed 2026-10-15: no repo named or containing "hat" exists anywhere accessible to Christophe's GitHub account** (`gh search repos`, global search, and a re-check of all 14 orgs all came back empty) — it genuinely isn't recoverable from GitHub. Christophe has a local copy from his own drive; whether it's usable depends on whether it has its own `.git` history, since this entire pipeline is git-log-driven. If it doesn't, there's nothing to compute bursts/LOC/aiPct from.
+- **athenaeum** (the whole `athenaeum-brew` org) — a side project done *on* a professional course, not hobby; re-checked 2026-10-15, two real bursts exist but the course-work nature is unaffected by the burst model
 - **~25 other repos** — personal forks of 3rd-party code, starter-template clones, scratch/test repos, and sites built for other people (`carolethomas`, `mugnierandthiebaud`, `eric-mugnier`) rather than Christophe's own hobby work — see `repos.yaml` for the full per-repo reasoning.
 
 `parimagine` and `earthlydelights` were almost missed entirely in the
@@ -363,19 +411,23 @@ scope, just surfaced as a side effect of the Pages-API cross-check above.
 
 ## Open / unfinished work
 
-1. **Re-measure `aiPct` per burst, not per project.** The single biggest
-   disclosed honesty gap in the current chart (see "AI-attribution
-   methodology" above) — `bwv1` (2022, predates Claude Code) currently shows
-   `bwv2`'s (2025) blended 3.4% only because they share a parent average.
-   Needs `disclosure` reinstalled and run scoped to each burst's own commit
-   range, then `index.html`'s `data` array and footer caveat updated to
-   match. (In progress as of 2026-10-15.)
+1. ~~Re-measure `aiPct` per burst, not per project.~~ **Done 2026-10-15** —
+   see "AI-attribution methodology" above
+   ([scripts/compute_burst_aipct.py](scripts/compute_burst_aipct.py)).
+   `bwv1` correctly shows 0%, not `bwv2`'s old blended 3.4%.
 2. **"vert axis is 'efficiency of dev'"** — Christophe's own phrasing from
    a round of feedback on the *superseded* (scope/day) design. The y-axis
    is now `commits/day`, an objective measure, not `scope/day` — this
    question may no longer apply the same way, but hasn't been explicitly
    revisited since the burst redesign. Worth a quick check rather than
    assuming it's resolved by the axis change alone.
+3. **`hat` may still be investigable** if Christophe's local copy (from his
+   own drive, not GitHub — confirmed unlocatable there, see "Projects in
+   scope" above) turns out to have its own `.git` history. If it does, it's
+   explicitly excluded anyway (professional assignment, not hobby) — but if
+   he ever asks to revisit that verdict, check for `.git` first before doing
+   anything else, since this entire pipeline is useless without real commit
+   history to work from.
 
 ## Repo / environment notes
 

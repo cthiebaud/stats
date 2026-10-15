@@ -139,6 +139,37 @@ groups:
     repos:
       - {owner: cthiebaud, repo: gear}
 
+  - name: klam
+    status: include
+    site: https://klam.cthiebaud.com
+    repos:
+      - {owner: cthiebaud, repo: klam}
+    note: >
+      REVERSES PROMPT.md's prior exclusion ("too tiny") -- confirmed
+      2026-10-15, after the chart moved to one row per burst instead of one
+      row per whole project: "too tiny" was a whole-project verdict, but
+      klam's one burst (56.2 active days, 41 commits -- "Musique de
+      Christophe Thiebaud", 100% his own authorship) is bigger than the
+      smallest burst already in the chart (ciaccona4: 27.2 days, 24
+      commits). Christophe confirmed via AskUserQuestion.
+
+  - name: openmozart
+    status: include
+    site: https://openmozart.cthiebaud.com
+    repos:
+      - {owner: cthiebaud, repo: openmozart.net}
+    note: >
+      REVERSES PROMPT.md's prior exclusion ("too tiny") -- confirmed
+      2026-10-15, same reasoning as klam above: "in memoriam openmozart.net,
+      2001-2005", 100% his own authorship, one burst of 21.2 active days /
+      263 commits / 12.4 commits-per-day -- more intense than almost
+      everything else already in the chart. Christophe confirmed via
+      AskUserQuestion. (openricard, also investigated at the same time, had
+      an even more intense burst -- 9.7 days / 264 commits / 27.1/day -- but
+      was NOT added: Christophe did not select it, leaving its "joke
+      project" exclusion in place despite the burst intensity. Don't re-add
+      without asking again.)
+
   # ---------------------------------------------------------------- exclude
   - name: iroif
     status: exclude
@@ -161,17 +192,27 @@ groups:
   - name: openricard
     status: exclude
     repos: [{owner: cthiebaud, repo: openricard.net}]
-    note: "joke project (per PROMPT.md)."
-
-  - name: klam
-    status: exclude
-    repos: [{owner: cthiebaud, repo: klam}]
-    note: "too tiny (per PROMPT.md)."
+    note: >
+      joke project (per PROMPT.md). Re-investigated 2026-10-15 alongside
+      klam/openmozart under the burst model: has the single most intense
+      burst found of any excluded repo (9.7 days, 264 commits, 27.1
+      commits/day -- higher than mundial's 25.97), 100% his own authorship,
+      "718 permutations of the word RICARD." Christophe did NOT select it
+      for inclusion despite the burst intensity -- the "joke project"
+      verdict stands. Don't re-add without asking again.
 
   - name: emugnier
     status: exclude
     repos: [{owner: cthiebaud, repo: emugnier}]
-    note: "too tiny (per PROMPT.md); also a fork."
+    note: >
+      Originally recorded as "too tiny; also a fork" -- WRONG, corrected
+      2026-10-15: re-investigated under the burst model and found a real,
+      substantial burst (262.4 active days, 308 commits, 100% his own
+      authorship despite the fork flag). The actual reason to exclude it:
+      it's the "Mugnier & Thiebaud" joint site (CNAME -> mugnierandthiebaud.com,
+      README literally titled "Mugnier & Thiebaud") -- the same site already
+      investigated and excluded under the mugnierandthiebaud org. Size was
+      never the real issue here.
 
   - name: music
     status: include
@@ -182,12 +223,9 @@ groups:
     note: >
       REVERSES PROMPT.md's prior exclusion ("too tiny") -- Christophe
       confirmed (2026-10-15) that merging in vinyl gives it enough scope to
-      count as a 12th included project. Final list is now 12 projects, not 11.
-
-  - name: openmozart
-    status: exclude
-    repos: [{owner: cthiebaud, repo: openmozart.net}]
-    note: "too tiny (per PROMPT.md)."
+      count as a project. (Superseded by klam/openmozart's additions the
+      same day -- see the include-section entries above for the current
+      count.)
 
   - name: hat
     status: exclude
